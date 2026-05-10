@@ -1,0 +1,33 @@
+# Environnements Python
+.env
+.venv/
+env/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Node.js
+node_modules/
+.next/
+dist/
+build/
+.env.local
+.env.production
+
+# IDE
+.DS_Store
+.vscode/settings.json
+*.idea/
+
+# Clés API & secrets
+*.key
+secrets.json
+
+# Données sensibles
+data/raw/
+data/private/
+
+# Logs
+*.log
+logs/
