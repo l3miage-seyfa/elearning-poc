@@ -14,4 +14,7 @@ urlpatterns = [
     path('<int:pk>/publier/', views.course_publish, name='course_publish'),
     path('<int:pk>/supprimer/', views.course_delete, name='course_delete'),
     path('groupe/<int:pk>/responsable/', views.responsible_group_detail, name='responsible_group'),
+    path('groupe/<int:pk>/ajouter-membre/', views.group_add_member, name='group_add_member'),
+    path('groupe/<int:pk>/retirer-membre/<int:person_pk>/', views.group_remove_member, name='group_remove_member'),
+    path('membres/autocomplete/', views.member_autocomplete, name='member_autocomplete'),
 ]

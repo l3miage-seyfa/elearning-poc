@@ -32,7 +32,33 @@
   <div class="card-header d-flex align-items-center gap-2">
     <i class="bi bi-person-lines-fill text-primary"></i>
     <strong>Membres ({{ members|length }})</strong>
+    <button class="btn btn-sm btn-outline-primary ms-auto" type="button"
+            data-bs-toggle="collapse" data-bs-target="#addMemberForm">
+      <i class="bi bi-person-plus me-1"></i>Ajouter un membre
+    </button>
   </div>
+
+  <!-- Formulaire ajout membre -->
+  <div class="collapse" id="addMemberForm">
+    <div class="card-body border-bottom bg-light">
+      <form method="post" action="{% url 'courses:group_add_member' pk=group.pk %}" class="d-flex gap-2 align-items-end flex-wrap">
+        {% csrf_token %}
+        <div class="flex-grow-1" style="min-width:260px; position:relative;">
+          <label class="form-label mb-1 fw-semibold small">Email du membre</label>
+          <input type="email" name="email" id="memberEmailInput"
+                 class="form-control" placeholder="prenom.nom@entreprise.fr"
+                 autocomplete="off" required>
+          <ul id="memberSuggestions"
+              class="list-group position-absolute w-100 shadow-sm"
+              style="z-index:1050; top:100%; display:none;"></ul>
+        </div>
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-plus-circle me-1"></i>Ajouter
+        </button>
+      </form>
+    </div>
+  </div>
+
   <div class="table-responsive">
     <table class="table table-hover mb-0">
       <thead class="table-light">
@@ -41,6 +67,7 @@
           <th>Prénom</th>
           <th>Email</th>
           <th class="text-center">Participations</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -55,10 +82,23 @@
               {% if nb %}<span class="badge bg-success">{{ nb }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
             {% endwith %}
           </td>
+          <td class="text-end">
+            {% if p != group.responsible %}
+            <form method="post" action="{% url 'courses:group_remove_member' pk=group.pk person_pk=p.pk %}"
+                  onsubmit="return confirm('Retirer {{ p.user.get_full_name }} du groupe ?')">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-person-dash"></i>
+              </button>
+            </form>
+            {% else %}
+            <span class="badge bg-warning text-dark"><i class="bi bi-shield-fill me-1"></i>Responsable</span>
+            {% endif %}
+          </td>
         </tr>
         {% endwith %}
         {% empty %}
-        <tr><td colspan="4" class="text-center text-muted py-3">Aucun membre dans ce groupe.</td></tr>
+        <tr><td colspan="5" class="text-center text-muted py-3">Aucun membre dans ce groupe.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -159,4 +199,46 @@
   </div>
   {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const input = document.getElementById('memberEmailInput');
+  const list  = document.getElementById('memberSuggestions');
+  if (!input) return;
+
+  let timer;
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    const q = this.value.trim();
+    if (q.length < 2) { list.style.display = 'none'; return; }
+    timer = setTimeout(() => {
+      fetch(`{% url 'courses:member_autocomplete' %}?q=${encodeURIComponent(q)}`)
+        .then(r => r.json())
+        .then(data => {
+          list.innerHTML = '';
+          if (!data.results.length) { list.style.display = 'none'; return; }
+          data.results.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'list-group-item list-group-item-action py-1 px-2 small';
+            li.style.cursor = 'pointer';
+            li.innerHTML = `<strong>${item.email}</strong> <span class="text-muted">${item.name}</span>`;
+            li.addEventListener('mousedown', (e) => {
+              e.preventDefault();
+              input.value = item.email;
+              list.style.display = 'none';
+            });
+            list.appendChild(li);
+          });
+          list.style.display = 'block';
+        });
+    }, 250);
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!input.contains(e.target)) list.style.display = 'none';
+  });
+})();
+</script>
 {% endblock %}

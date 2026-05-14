@@ -260,6 +260,75 @@ def responsible_group_detail(request, pk):
     })
 
 
+@responsible_required
+def group_add_member(request, pk):
+    """Ajoute un membre au groupe via son email (POST uniquement)."""
+    from accounts.models import Person as PersonModel
+    from groups.models import GroupMembership
+    group = get_object_or_404(Group, pk=pk)
+    person = request.user.person
+
+    if not person.is_admin and group.responsible != person:
+        from django.http import Http404
+        raise Http404
+
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip().lower()
+        try:
+            target = PersonModel.objects.get(user__email__iexact=email)
+            _, created = GroupMembership.objects.get_or_create(person=target, group=group)
+            if created:
+                messages.success(request, f"{target.user.get_full_name()} ({email}) ajouté au groupe.")
+            else:
+                messages.info(request, f"{target.user.get_full_name()} est déjà membre de ce groupe.")
+        except PersonModel.DoesNotExist:
+            messages.error(request, f"Aucun utilisateur trouvé avec l'email « {email} ».")
+
+    return redirect('courses:responsible_group', pk=pk)
+
+
+@responsible_required
+def group_remove_member(request, pk, person_pk):
+    """Retire un membre du groupe (POST uniquement)."""
+    from accounts.models import Person as PersonModel
+    from groups.models import GroupMembership
+    group = get_object_or_404(Group, pk=pk)
+    person = request.user.person
+
+    if not person.is_admin and group.responsible != person:
+        from django.http import Http404
+        raise Http404
+
+    if request.method == 'POST':
+        target = get_object_or_404(PersonModel, pk=person_pk)
+        if target == group.responsible:
+            messages.error(request, "Impossible de retirer le responsable du groupe.")
+        else:
+            GroupMembership.objects.filter(person=target, group=group).delete()
+            messages.success(request, f"{target.user.get_full_name()} retiré du groupe.")
+
+    return redirect('courses:responsible_group', pk=pk)
+
+
+@login_and_person_required
+def member_autocomplete(request):
+    """Retourne les membres en JSON pour l'autocomplete (email contient le terme)."""
+    import json
+    from accounts.models import Person as PersonModel
+    q = request.GET.get('q', '').strip()
+    results = []
+    if len(q) >= 2:
+        persons = PersonModel.objects.filter(
+            user__email__icontains=q
+        ).select_related('user').order_by('user__email')[:10]
+        results = [
+            {'email': p.user.email, 'name': p.user.get_full_name()}
+            for p in persons
+        ]
+    from django.http import JsonResponse
+    return JsonResponse({'results': results})
+
+
 # ─── Phase 5 : review & édition avant publication ───────────────────────────────
 
 def _can_edit_course(person, course):
