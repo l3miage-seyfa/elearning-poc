@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% load course_extras %}
+{% block title %}Groupe {{ group.name }} — Responsable{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-1">
+  <i class="bi bi-people-fill fs-3 text-primary"></i>
+  <div>
+    <h1 class="h3 mb-0">{{ group.name }}</h1>
+    <small class="text-muted">{{ group.get_type_display }} — vue responsable</small>
+  </div>
+  <div class="ms-auto">
+    <a href="{% url 'courses:upload_pdf' %}?group_id={{ group.pk }}" class="btn btn-primary">
+      <i class="bi bi-upload me-1"></i>Uploader un PDF
+    </a>
+    <a href="{% url 'courses:course_create' %}?group_id={{ group.pk }}" class="btn btn-outline-primary">
+      <i class="bi bi-plus-circle me-1"></i>Créer manuellement
+    </a>
+  </div>
+</div>
+{% if group.description %}<p class="text-muted mb-3">{{ group.description }}</p>{% endif %}
+
+{% if messages %}
+  {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }} alert-dismissible fade show" role="alert">
+      {{ msg }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endfor %}
+{% endif %}
+
+<!-- Membres -->
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-person-lines-fill text-primary"></i>
+    <strong>Membres ({{ members|length }})</strong>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Nom</th>
+          <th>Prénom</th>
+          <th>Email</th>
+          <th class="text-center">Participations</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for membership in members %}
+        {% with p=membership.person %}
+        <tr>
+          <td>{{ p.user.last_name|upper }}</td>
+          <td>{{ p.user.first_name }}</td>
+          <td><a href="mailto:{{ p.user.email }}">{{ p.user.email }}</a></td>
+          <td class="text-center">
+            {% with nb=p.participations.count %}
+              {% if nb %}<span class="badge bg-success">{{ nb }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
+            {% endwith %}
+          </td>
+        </tr>
+        {% endwith %}
+        {% empty %}
+        <tr><td colspan="4" class="text-center text-muted py-3">Aucun membre dans ce groupe.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Cours du groupe -->
+<div class="card">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-journal-richtext text-success"></i>
+    <strong>Cours du groupe ({{ courses|length }})</strong>
+  </div>
+  {% if courses %}
+  <div class="accordion accordion-flush" id="coursesAccordion">
+    {% for course in courses %}
+    <div class="accordion-item">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                data-bs-target="#course{{ course.pk }}">
+          <span class="me-2">
+            {% if course.is_published %}
+              <i class="bi bi-check-circle-fill text-success"></i>
+            {% else %}
+              <i class="bi bi-hourglass-split text-warning"></i>
+            {% endif %}
+          </span>
+          {{ course.title }}
+          <span class="ms-2 badge bg-secondary">{{ course.nb_slides }} slides</span>
+          <span class="ms-1 badge bg-secondary">{{ course.nb_questions }} questions</span>
+        </button>
+      </h2>
+      <div id="course{{ course.pk }}" class="accordion-collapse collapse">
+        <div class="accordion-body">
+          <div class="d-flex gap-2 mb-3 flex-wrap">
+            <a href="{% url 'courses:course_detail' pk=course.pk %}" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-eye me-1"></i>Aperçu
+            </a>
+            <a href="{% url 'courses:review_slides' pk=course.pk %}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-pencil-square me-1"></i>Éditer
+            </a>
+            <form method="post" action="{% url 'courses:course_publish' pk=course.pk %}" class="d-inline">
+              {% csrf_token %}
+              {% if course.is_published %}
+              <button type="submit" class="btn btn-sm btn-warning">
+                <i class="bi bi-eye-slash me-1"></i>Dépublier
+              </button>
+              {% else %}
+              <button type="submit" class="btn btn-sm btn-success">
+                <i class="bi bi-rocket-takeoff me-1"></i>Publier
+              </button>
+              {% endif %}
+            </form>
+            <a href="{% url 'courses:course_delete' pk=course.pk %}" class="btn btn-sm btn-outline-danger ms-auto">
+              <i class="bi bi-trash3 me-1"></i>Supprimer
+            </a>
+          </div>
+
+          <!-- Participations -->
+          {% with parts=participations_by_course|get_item:course.pk %}
+          {% if parts %}
+          <h6 class="mb-2"><i class="bi bi-bar-chart me-1"></i>Participations</h6>
+          <table class="table table-sm table-hover">
+            <thead class="table-light">
+              <tr>
+                <th>Nom</th>
+                <th class="text-center">Score</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for part in parts %}
+              <tr>
+                <td>{{ part.person.user.get_full_name }}</td>
+                <td class="text-center">
+                  {% if part.score is not None %}
+                    <span class="badge {% if part.score >= 80 %}bg-success{% elif part.score >= 50 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                      {{ part.score|floatformat:0 }}%
+                    </span>
+                  {% else %}—{% endif %}
+                </td>
+                <td>{{ part.completed_at|date:"d/m/Y H:i"|default:"—" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p class="text-muted mb-0 small"><i class="bi bi-info-circle me-1"></i>Aucune participation pour ce cours.</p>
+          {% endif %}
+          {% endwith %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card-body text-muted">
+    <i class="bi bi-info-circle me-1"></i>Aucun cours créé pour ce groupe.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

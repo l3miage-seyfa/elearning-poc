@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Supprimer — {{ course.title }}{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+  <i class="bi bi-trash3 fs-3 text-danger"></i>
+  <h1 class="h3 mb-0">Supprimer le cours</h1>
+</div>
+
+<div class="card border-danger">
+  <div class="card-body">
+    <p class="mb-1">Vous êtes sur le point de supprimer le cours :</p>
+    <p class="fw-bold fs-5 mb-3">{{ course.title }}</p>
+    <p class="text-muted mb-0">
+      <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>
+      Cette action est <strong>irréversible</strong>. Toutes les slides, questions et participations associées seront également supprimées.
+    </p>
+  </div>
+  <div class="card-footer d-flex gap-2">
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">
+        <i class="bi bi-trash3 me-1"></i>Confirmer la suppression
+      </button>
+    </form>
+    <a href="{% url 'courses:course_detail' pk=course.pk %}" class="btn btn-outline-secondary">
+      <i class="bi bi-x-circle me-1"></i>Annuler
+    </a>
+  </div>
+</div>
+{% endblock %}

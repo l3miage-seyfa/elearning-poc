@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Review questions — {{ course.title }}{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+  <i class="bi bi-patch-question fs-3 text-warning"></i>
+  <div>
+    <h1 class="h3 mb-0">Review des questions</h1>
+    <small class="text-muted">{{ course.title }} — étape 2/2</small>
+  </div>
+</div>
+
+{% if messages %}
+  {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }} alert-dismissible fade show" role="alert">
+      {{ msg }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endfor %}
+{% endif %}
+
+<div class="card mb-3">
+  <div class="card-body py-2 px-3 d-flex gap-3">
+    <span class="badge bg-warning text-dark fs-6">{{ questions|length }} questions</span>
+    <span class="text-muted small">Modifiez les questions puis cliquez sur <strong>Sauvegarder</strong>, puis publiez le cours.</span>
+  </div>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+  {% for q in questions %}
+  <div class="card mb-4">
+    <div class="card-header d-flex align-items-center gap-2 py-2">
+      <i class="bi bi-question-circle text-warning"></i>
+      <strong>Question {{ q.order }}</strong>
+    </div>
+    <div class="card-body">
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Énoncé</label>
+        <textarea name="q_{{ q.pk }}_text" rows="2" class="form-control">{{ q.text }}</textarea>
+      </div>
+      <div class="row g-2 mb-3">
+        {% for letter, val in q.choice_a|default:""|make_list|zip %}{% endfor %}
+        <div class="col-md-6">
+          <label class="form-label">A)</label>
+          <input type="text" name="q_{{ q.pk }}_a" value="{{ q.choice_a }}" class="form-control">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">B)</label>
+          <input type="text" name="q_{{ q.pk }}_b" value="{{ q.choice_b }}" class="form-control">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">C)</label>
+          <input type="text" name="q_{{ q.pk }}_c" value="{{ q.choice_c }}" class="form-control">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">D)</label>
+          <input type="text" name="q_{{ q.pk }}_d" value="{{ q.choice_d }}" class="form-control">
+        </div>
+      </div>
+      <div class="row g-2">
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Bonne réponse</label>
+          <select name="q_{{ q.pk }}_correct" class="form-select">
+            {% for letter in "abcd" %}
+            <option value="{{ letter }}" {% if q.correct_answer == letter %}selected{% endif %}>{{ letter|upper }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-8">
+          <label class="form-label fw-semibold">Explication</label>
+          <textarea name="q_{{ q.pk }}_explanation" rows="2" class="form-control">{{ q.explanation }}</textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="d-flex gap-2 flex-wrap">
+    <button type="submit" class="btn btn-warning text-dark">
+      <i class="bi bi-floppy me-1"></i>Sauvegarder les questions
+    </button>
+    <a href="{% url 'courses:course_publish' pk=course.pk %}" class="btn btn-success"
+       onclick="return confirm('Publier le cours sans sauvegarder les modifications en cours ?')">
+      <i class="bi bi-rocket-takeoff me-1"></i>Publier maintenant
+    </a>
+    <a href="{% url 'courses:review_slides' pk=course.pk %}" class="btn btn-outline-secondary ms-auto">
+      <i class="bi bi-arrow-left me-1"></i>Retour aux slides
+    </a>
+  </div>
+</form>
+{% endblock %}

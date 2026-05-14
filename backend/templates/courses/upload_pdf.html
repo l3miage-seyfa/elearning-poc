@@ -80,7 +80,7 @@
             <select name="group" class="form-select" required>
               <option value="">— Choisir un groupe —</option>
               {% for group in groups %}
-              <option value="{{ group.pk }}">{{ group.name }} ({{ group.get_type_display }})</option>
+              <option value="{{ group.pk }}" {% if preselect_group_id and preselect_group_id|stringformat:"s" == group.pk|stringformat:"s" %}selected{% endif %}>{{ group.name }} ({{ group.get_type_display }})</option>
               {% endfor %}
             </select>
           </div>

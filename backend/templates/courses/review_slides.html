@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Review slides — {{ course.title }}{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+  <i class="bi bi-file-slides fs-3 text-primary"></i>
+  <div>
+    <h1 class="h3 mb-0">Review des slides</h1>
+    <small class="text-muted">{{ course.title }} — étape 1/2</small>
+  </div>
+</div>
+
+{% if messages %}
+  {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }} alert-dismissible fade show" role="alert">
+      {{ msg }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endfor %}
+{% endif %}
+
+<div class="card mb-3">
+  <div class="card-body py-2 px-3 d-flex gap-3">
+    <span class="badge bg-secondary fs-6">{{ slides|length }} slides</span>
+    <span class="text-muted small">Modifiez le contenu de chaque slide, puis cliquez sur <strong>Sauvegarder & continuer</strong>.</span>
+  </div>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+  {% for slide in slides %}
+  <div class="card mb-3">
+    <div class="card-header d-flex align-items-center gap-2 py-2">
+      <i class="bi bi-layers text-primary"></i>
+      <strong>Slide {{ slide.order }}</strong>
+    </div>
+    <div class="card-body">
+      <textarea
+        name="slide_{{ slide.pk }}"
+        rows="5"
+        class="form-control font-monospace"
+      >{{ slide.content }}</textarea>
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-arrow-right-circle me-1"></i>Sauvegarder &amp; continuer vers les questions
+    </button>
+    <a href="{% url 'courses:review_questions' pk=course.pk %}" class="btn btn-outline-secondary">
+      <i class="bi bi-skip-forward me-1"></i>Passer (sans sauvegarder)
+    </a>
+    <a href="{% url 'courses:course_detail' pk=course.pk %}" class="btn btn-outline-secondary ms-auto">
+      <i class="bi bi-eye me-1"></i>Aperçu
+    </a>
+  </div>
+</form>
+{% endblock %}

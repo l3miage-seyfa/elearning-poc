@@ -64,6 +64,15 @@
         <li class="nav-item">
           <a class="nav-link {% block nav_groups_admin %}{% endblock %}" href="{% url 'groups:group_list' %}"><i class="bi bi-diagram-3 me-1"></i>Groupes</a>
         </li>
+        {% elif user.person.managed_groups.exists %}
+        <li class="nav-item mt-2 text-muted small px-3">RESPONSABLE</li>
+        {% for g in user.person.managed_groups.all %}
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'courses:responsible_group' pk=g.pk %}">
+            <i class="bi bi-people-fill me-1"></i>{{ g.name }}
+          </a>
+        </li>
+        {% endfor %}
         {% endif %}
       </ul>
     </nav>

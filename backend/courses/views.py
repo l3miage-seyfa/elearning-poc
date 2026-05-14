@@ -2,7 +2,7 @@ import uuid
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.db import transaction
-from services.decorators import login_and_person_required, admin_required
+from services.decorators import login_and_person_required, admin_required, responsible_required
 from services.ai_service import extract_pdf_text, generate_slides, generate_questions
 from services.storage_service import upload_pdf
 from groups.models import Group
@@ -94,6 +94,7 @@ def upload_pdf_view(request):
     """
     groups = Group.objects.all()
     course_id = request.GET.get('course_id') or request.POST.get('course_id')
+    preselect_group_id = request.GET.get('group_id') or request.POST.get('group_id')
     existing_course = None
     if course_id:
         existing_course = get_object_or_404(Course, pk=course_id)
@@ -188,15 +189,15 @@ def upload_pdf_view(request):
                     for i, q in enumerate(questions_data)
                 ])
 
-                course.is_published = True
+                course.is_published = False
                 course.save()
 
             messages.success(
                 request,
-                f"Cours « {course.title} » généré avec {len(slides_data)} slides "
-                f"et {len(questions_data)} questions. Publié automatiquement."
+                f"Cours « {course.title} » généré avec {len(slides_data)} slides "
+                f"et {len(questions_data)} questions. Relisez et publiez."
             )
-            return redirect('courses:course_detail', pk=course.pk)
+            return redirect('courses:review_slides', pk=course.pk)
 
         except Exception as e:
             messages.error(request, f"Erreur lors de la génération : {e}")
@@ -204,13 +205,19 @@ def upload_pdf_view(request):
     return render(request, 'courses/upload_pdf.html', {
         'groups': groups,
         'existing_course': existing_course,
+        'preselect_group_id': preselect_group_id,
     })
 
 
 @login_and_person_required
 def course_detail(request, pk):
     """Détail d'un cours : slides + questions."""
-    course = get_object_or_404(Course, pk=pk, is_published=True)
+    course = get_object_or_404(Course, pk=pk)
+    person = request.user.person
+    # Les membres ne voient que les cours publiés
+    if not course.is_published and not person.is_admin and course.created_by != person:
+        from django.http import Http404
+        raise Http404
     slides = course.slides.order_by('order')
     questions = course.questions.order_by('order')
     return render(request, 'courses/course_detail.html', {
@@ -218,4 +225,134 @@ def course_detail(request, pk):
         'slides': slides,
         'questions': questions,
     })
+
+
+# ─── Phase 4 : interface responsable de groupe ──────────────────────────────────
+
+
+@responsible_required
+def responsible_group_detail(request, pk):
+    """Page groupe du responsable : membres, participations, cours du groupe."""
+    from groups.models import GroupMembership
+    from participations.models import Participation
+    person = request.user.person
+    group = get_object_or_404(Group, pk=pk)
+
+    if not person.is_admin and group.responsible != person:
+        from django.http import Http404
+        raise Http404
+
+    members = group.memberships.select_related('person__user').order_by('person__user__last_name')
+    courses = Course.objects.filter(group=group).order_by('-created_at')
+
+    # Participations pour chaque cours du groupe
+    participations_by_course = {}
+    for course in courses:
+        participations_by_course[course.pk] = Participation.objects.filter(
+            course=course
+        ).select_related('person__user').order_by('-completed_at')
+
+    return render(request, 'courses/responsible_group.html', {
+        'group': group,
+        'members': members,
+        'courses': courses,
+        'participations_by_course': participations_by_course,
+    })
+
+
+# ─── Phase 5 : review & édition avant publication ───────────────────────────────
+
+def _can_edit_course(person, course):
+    return person.is_admin or course.created_by == person or \
+           course.group.responsible == person
+
+
+@login_and_person_required
+def review_slides(request, pk):
+    """Review + édition de toutes les slides avant publication."""
+    course = get_object_or_404(Course, pk=pk)
+    person = request.user.person
+    if not _can_edit_course(person, course):
+        from django.http import Http404
+        raise Http404
+
+    slides = list(course.slides.order_by('order'))
+
+    if request.method == 'POST':
+        with transaction.atomic():
+            for slide in slides:
+                new_content = request.POST.get(f'slide_{slide.pk}', '').strip()
+                if new_content != slide.content:
+                    slide.content = new_content
+                    slide.save()
+        messages.success(request, "Slides sauvegardées.")
+        return redirect('courses:review_questions', pk=course.pk)
+
+    return render(request, 'courses/review_slides.html', {
+        'course': course, 'slides': slides
+    })
+
+
+@login_and_person_required
+def review_questions(request, pk):
+    """Review + édition de toutes les questions avant publication."""
+    course = get_object_or_404(Course, pk=pk)
+    person = request.user.person
+    if not _can_edit_course(person, course):
+        from django.http import Http404
+        raise Http404
+
+    questions = list(course.questions.order_by('order'))
+
+    if request.method == 'POST':
+        with transaction.atomic():
+            for q in questions:
+                q.text           = request.POST.get(f'q_{q.pk}_text', '').strip()
+                q.choice_a       = request.POST.get(f'q_{q.pk}_a', '').strip()
+                q.choice_b       = request.POST.get(f'q_{q.pk}_b', '').strip()
+                q.choice_c       = request.POST.get(f'q_{q.pk}_c', '').strip()
+                q.choice_d       = request.POST.get(f'q_{q.pk}_d', '').strip()
+                q.correct_answer = request.POST.get(f'q_{q.pk}_correct', 'a')
+                q.explanation    = request.POST.get(f'q_{q.pk}_explanation', '').strip()
+                q.save()
+        messages.success(request, "Questions sauvegardées.")
+        return redirect('courses:review_questions', pk=course.pk)
+
+    return render(request, 'courses/review_questions.html', {
+        'course': course, 'questions': questions
+    })
+
+
+@login_and_person_required
+def course_publish(request, pk):
+    """Publie (ou dépublie) un cours."""
+    course = get_object_or_404(Course, pk=pk)
+    person = request.user.person
+    if not _can_edit_course(person, course):
+        from django.http import Http404
+        raise Http404
+    if request.method == 'POST':
+        course.is_published = not course.is_published
+        course.save()
+        status = "publié" if course.is_published else "dépublié"
+        messages.success(request, f"Cours « {course.title} » {status}.")
+    return redirect('courses:course_detail', pk=course.pk)
+
+
+@login_and_person_required
+def course_delete(request, pk):
+    """Supprime un cours (responsable ou admin uniquement)."""
+    course = get_object_or_404(Course, pk=pk)
+    person = request.user.person
+    if not _can_edit_course(person, course):
+        from django.http import Http404
+        raise Http404
+    if request.method == 'POST':
+        title = course.title
+        course.delete()
+        messages.success(request, f"Cours « {title} » supprimé.")
+        if person.is_admin:
+            return redirect('courses:admin_dashboard')
+        return redirect('groups:responsible_group', pk=course.group_id)
+    return render(request, 'courses/course_confirm_delete.html', {'course': course})
 
