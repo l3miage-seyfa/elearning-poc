@@ -48,15 +48,15 @@ Backend     : Python 3.11 + Django (auth + ORM + admin intégrés)
 Frontend    : Django Templates (HTML/Jinja2, sans CSS élaboré, tables simples)
 BDD         : Railway PostgreSQL + extension pgvector (activée dès le début)
 PDF parsing : PyMuPDF (fitz)
-Fichiers    : AWS S3 (stockage persistant des PDFs uploadés)
+Fichiers    : Railway Storage Bucket (S3-compatible, même API boto3, zéro compte AWS)
 Déploiement : Railway (déploiement automatique depuis GitHub, zéro config serveur)
 URL         : https://xxx.railway.app (URL publique automatique)
-Compétement : django-storages + boto3 pour S3 | psycopg2 + django-pgvector
+Dépendances : django-storages + boto3 (même code qu'AWS S3) | psycopg2 + django-pgvector
 ```
 
 > **Pourquoi Railway et pas AWS EC2 ?** Railway détecte Django automatiquement, gère Gunicorn/Nginx en interne, déploie à chaque `git push`. La Phase 8 passe de ~6h à ~1h. PostgreSQL avec pgvector est inclus en 1 clic.
 
-> **Pourquoi garder AWS S3 ?** Railway ne stocke pas les fichiers de façon persistante. S3 est la seule solution fiable pour conserver les PDFs uploadés durablement, quel que soit l'hébergeur applicatif.
+> **Pourquoi Railway Bucket et pas AWS S3 ?** Railway propose un stockage objet S3-compatible directement intégré à la plateforme. Zéro compte AWS à créer, variables d'env injectées automatiquement, même code Django (`django-storages` + `boto3`). La seule différence : 1 ligne dans `settings.py` (`AWS_S3_ENDPOINT_URL`). Pour un POC, c'est la solution la plus simple.
 
 > **Pourquoi pgvector et pas ChromaDB ?** pgvector est une extension PostgreSQL : zéro service supplémentaire. Les vecteurs du chatbot sont dans la même base que le reste des données.
 
@@ -275,9 +275,9 @@ L'inverse **n'est pas vrai** : un membre d'un groupe parent ne voit **pas** les 
 | Étape | Détail | Temps |
 |-------|--------|-------|
 | 0.1 | Créer compte **OpenAI** → générer une clé API (`sk-...`) → créditer $10 | 20 min |
-| 0.2 | Créer compte **AWS** → activer free tier → créer un utilisateur IAM avec Access Key | 30 min |
+| 0.2 | Créer compte **Railway** → connecter GitHub → créer un projet | 15 min |
 | 0.3 | Installer **Python 3.11**, **pip**, **virtualenv** en local | 15 min |
-| 0.4 | Installer **git**, configurer SSH key pour GitHub (ou GitLab) | 15 min |
+| 0.4 | Installer **git**, configurer SSH key pour GitHub | 15 min |
 | 0.5 | Tester la clé OpenAI avec un appel simple en Python | 20 min |
 
 ---
@@ -356,7 +356,7 @@ L'inverse **n'est pas vrai** : un membre d'un groupe parent ne voit **pas** les 
 | Étape | Détail | Temps |
 |-------|--------|-------|
 | 6.1 | Formulaire **créer un cours** : titre + nb slides + nb questions + upload PDF | 30 min |
-| 6.2 | Upload du PDF vers **AWS S3** via `boto3` | 30 min |
+| 6.2 | Upload du PDF vers **Railway Bucket** via `boto3` (S3-compatible) | 20 min |
 | 6.3 | Lancement de la génération IA (appel phases 5.1→5.5) | 20 min |
 | 6.4 | Page **review slides** : affichage slide par slide avec formulaire d'édition du texte | 45 min |
 | 6.5 | Page **review questions** : affichage question par question avec édition | 45 min |
@@ -378,19 +378,19 @@ L'inverse **n'est pas vrai** : un membre d'un groupe parent ne voit **pas** les 
 
 ---
 
-### ☁️ PHASE 8 — Déploiement Railway + AWS S3 *(∼1h30)*
-> L’application tourne en ligne avec une URL publique, zéro config serveur
+### ☁️ PHASE 8 — Déploiement Railway *(∼1h)*
+> L'application tourne en ligne avec une URL publique, tout hébergé sur Railway
 
 | Étape | Détail | Temps |
 |-------|--------|-------|
-| 8.1 | Créer compte **Railway** → connecter le repo GitHub | 10 min |
+| 8.1 | Connecter le repo GitHub à Railway → créer le service Django | 10 min |
 | 8.2 | Ajouter un service **PostgreSQL** sur Railway → activer l'extension `pgvector` | 15 min |
-| 8.3 | Créer compte **AWS** → créer bucket **S3** + utilisateur IAM avec Access Key | 20 min |
+| 8.3 | Créer un **Railway Storage Bucket** → récupérer `BUCKET_ENDPOINT`, `ACCESS_KEY`, `SECRET_KEY` | 10 min |
 | 8.4 | Ajouter les variables d'environnement sur Railway (voir liste ci-dessous) | 10 min |
-| 8.5 | Adapter `settings.py` : `DATABASE_URL`, `STORAGES` S3, `ALLOWED_HOSTS` | 20 min |
-| 8.6 | Ajouter `railway.toml` + `Procfile` au repo | 10 min |
+| 8.5 | Adapter `settings.py` : `DATABASE_URL`, `STORAGES` Railway Bucket, `ALLOWED_HOSTS` | 15 min |
+| 8.6 | Ajouter `railway.toml` au repo | 5 min |
 | 8.7 | `git push` → Railway déploie automatiquement → `railway run python manage.py migrate` | 10 min |
-| 8.8 | Tests complets sur l'URL publique + debug | 25 min |
+| 8.8 | Tests complets sur l'URL publique + debug | 15 min |
 
 ---
 
@@ -432,11 +432,11 @@ L'inverse **n'est pas vrai** : un membre d'un groupe parent ne voit **pas** les 
 | 5 | Génération IA (PDF → cours) | ~4h |
 | 6 | Flow création cours | ~4h |
 | 7 | Flow participation | ~3h |
-| 8 | Déploiement Railway + AWS S3 | ~1h30 |
+| 8 | Déploiement Railway (app + bucket) | ~1h |
 | 9 | **[BONUS]** Chatbot RAG | ~8h |
 | 10 | Bilan & soutenance | ~5h |
-| **TOTAL sans bonus** | | **~30h** |
-| **TOTAL avec bonus** | | **~38h** |
+| **TOTAL sans bonus** | | **~29h30** |
+| **TOTAL avec bonus** | | **~37h30** |
 
 ---
 
@@ -447,24 +447,24 @@ L'inverse **n'est pas vrai** : un membre d'un groupe parent ne voit **pas** les 
 ### Infrastructure cible
 
 ```
-┌────────────────────────────────────────────────┐
-│              Railway                            │
-│                                                │
-│   ┌──────────────┐   ┌────────────────────┐  │
-│   │ Django App    │   │ PostgreSQL          │  │
-│   │ (auto-deploy) │◄─►│ + pgvector          │  │
-│   └──────────────┘   └────────────────────┘  │
-│          │                                    │
-│   https://xxx.railway.app                      │
-└──────────┼───────────────────────────────────┘
-           │
-           │ uploads/téléchargement PDFs
-           │
-┌──────────┴───────────────────────────────────┐
-│              AWS S3                            │
-│   Bucket : doculearn-uploads                   │
-│   (PDFs stockés de façon permanente)            │
-└────────────────────────────────────────────────┐
+┌────────────────────────────────────────────────────┐
+│                    Railway                          │
+│                                                    │
+│   ┌──────────────┐   ┌────────────────────┐       │
+│   │ Django App    │   │ PostgreSQL          │       │
+│   │ (auto-deploy) │◄─►│ + pgvector          │       │
+│   └──────┬───────┘   └────────────────────┘       │
+│          │                                         │
+│          │ boto3 (API S3-compatible)               │
+│          ▼                                         │
+│   ┌──────────────────────────────┐                │
+│   │ Railway Storage Bucket        │                │
+│   │ PDFs stockés de façon        │                │
+│   │ persistante ($0.015/GB-mois)  │                │
+│   └──────────────────────────────┘                │
+│                                                    │
+│   https://xxx.railway.app                          │
+└────────────────────────────────────────────────────┘
 ```
 
 ### Services utilisés
@@ -473,7 +473,7 @@ L'inverse **n'est pas vrai** : un membre d'un groupe parent ne voit **pas** les 
 |---------|-------|------|
 | **Railway** (app Django) | Hébergement applicatif, déploiement auto depuis GitHub | ~$5/mois |
 | **Railway PostgreSQL** | Base de données + pgvector pour RAG | Inclus dans Railway |
-| **AWS S3** | Stockage persistant des PDFs uploadés | ~$0 pour un POC |
+| **Railway Storage Bucket** | Stockage persistant des PDFs (S3-compatible, même API boto3) | ~$0.015/GB-mois ≈ $0 pour un POC |
 | **Total** | | **~$5/mois** |
 
 ### Variables d’environnement Railway
@@ -481,12 +481,13 @@ L'inverse **n'est pas vrai** : un membre d'un groupe parent ne voit **pas** les 
 DJANGO_SECRET_KEY=...
 DJANGO_DEBUG=False
 ALLOWED_HOSTS=xxx.railway.app
-DATABASE_URL=postgresql://...  # injecté automatiquement par Railway
-OPENAI_API_KEY=sk-...          # ⚠️ ne jamais commiter dans git
-AWS_ACCESS_KEY_ID=...
-AWS_SECRET_ACCESS_KEY=...
-AWS_S3_BUCKET_NAME=doculearn-uploads
-AWS_S3_REGION=eu-west-3
+DATABASE_URL=postgresql://...         # injecté automatiquement par Railway
+OPENAI_API_KEY=sk-...                 # ⚠️ ne jamais commiter dans git
+# Railway Bucket (S3-compatible — valeurs disponibles dans le dashboard Railway)
+AWS_ACCESS_KEY_ID=...                 # fourni par Railway Bucket
+AWS_SECRET_ACCESS_KEY=...            # fourni par Railway Bucket
+AWS_S3_BUCKET_NAME=doculearn-uploads  # nom choisi à la création du bucket
+AWS_S3_ENDPOINT_URL=https://...       # endpoint Railway Bucket (≠ AWS)
 ```
 
 ### Fichiers Railway à ajouter au repo
