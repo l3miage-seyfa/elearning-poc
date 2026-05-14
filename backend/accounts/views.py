@@ -38,8 +38,12 @@ def logout_view(request):
 def dashboard(request):
     person = getattr(request.user, 'person', None)
     if person is None:
+        if request.user.is_superuser:
+            Person.objects.create(user=request.user, is_admin=True)
+            return redirect('courses:admin_dashboard')
         messages.warning(request, "Votre compte n'a pas de profil Person.")
-        return render(request, 'accounts/dashboard.html', {'person': None})
+        logout(request)
+        return redirect('accounts:login')
 
     if person.is_admin:
         return redirect('courses:admin_dashboard')
