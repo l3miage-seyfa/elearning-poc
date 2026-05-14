@@ -264,25 +264,185 @@ L'inverse **n'est pas vrai** : un membre d'un groupe parent ne voit **pas** les 
 
 ---
 
-## 9. Roadmap ✅
+## 9. Roadmap détaillée avec estimations ✅
 
-| Phase | Description | Statut |
-|-------|-------------|--------|
-| 0 | Initialisation git + structure projet | ✅ Fait |
-| 1 | Recherche outils existants + choix définitifs | ✅ Fait (14/05/2026) |
-| 2 | Spécification complète (ce document) | ✅ Fait (14/05/2026) |
-| 3 | Setup Django + modèles + migrations + admin | 🔲 À faire |
-| 4 | Auth (login/logout, redirect selon rôle) | 🔲 À faire |
-| 5 | Interface Admin : CRUD Personnes & Groupes | 🔲 À faire |
-| 6 | Interface Membre : Mes cours + Mes groupes | 🔲 À faire |
-| 7 | Génération IA : extraction PDF + appels GPT-4o | 🔲 À faire |
-| 8 | Flow création cours : upload → génération → édition → publication | 🔲 À faire |
-| 9 | Flow participation : slides → quiz → résultats | 🔲 À faire |
-| 10 | Tests avec données réelles | 🔲 À faire |
-| 11 | Déploiement AWS (EC2 + RDS + pgvector + S3 + Nginx) | 🔲 À faire |
-| 12 | **[BONUS]** Chatbot RAG : chunks + embeddings + pgvector + interface | 🔲 À faire |
-| 13 | Bilan : faisabilité, utilité, limites | 🔲 À faire |
-| 14 | Préparation démo + diaporama soutenance | 🔲 À faire |
+> **Légende temps** : estimation réaliste en heures de travail effectif (hors attentes/blocages)  
+> **Total estimé** : ~33h phase principale + ~8h bonus + ~5h soutenance = **~46h**
+
+---
+
+### 🔧 PHASE 0 — Prérequis comptes & outils *(~2h)*
+> **Avant de coder**, créer les comptes nécessaires
+
+| Étape | Détail | Temps |
+|-------|--------|-------|
+| 0.1 | Créer compte **OpenAI** → générer une clé API (`sk-...`) → créditer $10 | 20 min |
+| 0.2 | Créer compte **AWS** → activer free tier → créer un utilisateur IAM avec Access Key | 30 min |
+| 0.3 | Installer **Python 3.11**, **pip**, **virtualenv** en local | 15 min |
+| 0.4 | Installer **git**, configurer SSH key pour GitHub (ou GitLab) | 15 min |
+| 0.5 | Tester la clé OpenAI avec un appel simple en Python | 20 min |
+
+---
+
+### 🏗️ PHASE 1 — Setup Django local *(~2h)*
+> Projet Django fonctionnel en local avec tous les modèles créés
+
+| Étape | Détail | Temps |
+|-------|--------|-------|
+| 1.1 | Créer le projet Django + app `core` + `requirements.txt` | 20 min |
+| 1.2 | Configurer `settings.py` : base SQLite locale pour dev, variables d'env via `python-decouple` | 20 min |
+| 1.3 | Écrire les **6 modèles** : `Person`, `Group`, `Course`, `Slide`, `Question`, `Participation` | 45 min |
+| 1.4 | `makemigrations` + `migrate` + vérification admin Django | 15 min |
+| 1.5 | Créer le superuser `admin@poc.com` via `createsuperuser` | 5 min |
+| 1.6 | Enregistrer les modèles dans `admin.py` → vérifier le panneau admin | 15 min |
+
+---
+
+### 🔐 PHASE 2 — Authentification & routing *(~2h)*
+> Login/logout fonctionnel, redirection selon le rôle
+
+| Étape | Détail | Temps |
+|-------|--------|-------|
+| 2.1 | Configurer le système d'auth Django (LOGIN_URL, LOGIN_REDIRECT_URL) | 20 min |
+| 2.2 | Page **login** (email + mot de passe) | 20 min |
+| 2.3 | Middleware/décorateur : `@login_required` + `@admin_required` | 20 min |
+| 2.4 | Redirection post-login : admin → dashboard admin, membre → Mes cours | 20 min |
+| 2.5 | Page **logout** + navbar de base (Mes cours / Mes groupes / Déconnexion) | 20 min |
+
+---
+
+### 👤 PHASE 3 — Interface Admin : CRUD Personnes & Groupes *(~4h)*
+> L'admin peut créer/modifier/supprimer personnes et groupes
+
+| Étape | Détail | Temps |
+|-------|--------|-------|
+| 3.1 | Liste des personnes + formulaire **créer une personne** (nom, prénom, email, mdp) | 45 min |
+| 3.2 | Modifier / Supprimer une personne | 30 min |
+| 3.3 | Liste des groupes + formulaire **créer un groupe** (nom, description, type, parent, responsable, membres) | 60 min |
+| 3.4 | Logique : ajout automatique du responsable comme membre | 20 min |
+| 3.5 | Modifier / Supprimer un groupe | 30 min |
+| 3.6 | Dashboard admin : compteurs (nb personnes, nb groupes, nb cours publiés) | 15 min |
+
+---
+
+### 📚 PHASE 4 — Interface Membre : Mes cours & Mes groupes *(~3h)*
+> Un membre connecté voit ses cours disponibles et ses groupes
+
+| Étape | Détail | Temps |
+|-------|--------|-------|
+| 4.1 | **Mes cours** : requête récursive pour remonter la hiérarchie des groupes ancêtres | 45 min |
+| 4.2 | Affichage des cours par groupe, avec statut (non commencé / note %) | 30 min |
+| 4.3 | **Mes groupes** : liste des groupes dont l'utilisateur est membre | 20 min |
+| 4.4 | Si responsable d'un groupe : afficher liste des cours + bouton "Créer un cours" | 30 min |
+| 4.5 | Page groupe responsable : liste des membres + leurs participations/notes | 30 min |
+
+---
+
+### 🤖 PHASE 5 — Génération IA : PDF → Slides + Quiz *(~4h)*
+> Le cœur IA du projet : un PDF devient un cours complet
+
+| Étape | Détail | Temps |
+|-------|--------|-------|
+| 5.1 | Extraction du texte PDF avec **PyMuPDF** + nettoyage | 30 min |
+| 5.2 | Écrire le **prompt slides** : instructions GPT-4o pour générer N slides en JSON | 45 min |
+| 5.3 | Écrire le **prompt questions** : instructions GPT-4o pour générer M QCM en JSON | 45 min |
+| 5.4 | Appels API OpenAI + parsing JSON + gestion erreurs | 30 min |
+| 5.5 | Sauvegarder slides et questions en base | 20 min |
+| 5.6 | Tests avec 2-3 PDFs différents, ajustement des prompts | 30 min |
+
+---
+
+### 📝 PHASE 6 — Flow création de cours *(~4h)*
+> Le responsable crée, revoit, corrige et publie un cours
+
+| Étape | Détail | Temps |
+|-------|--------|-------|
+| 6.1 | Formulaire **créer un cours** : titre + nb slides + nb questions + upload PDF | 30 min |
+| 6.2 | Upload du PDF vers **AWS S3** via `boto3` | 30 min |
+| 6.3 | Lancement de la génération IA (appel phases 5.1→5.5) | 20 min |
+| 6.4 | Page **review slides** : affichage slide par slide avec formulaire d'édition du texte | 45 min |
+| 6.5 | Page **review questions** : affichage question par question avec édition | 45 min |
+| 6.6 | Bouton **Publier** → `is_published = True` → cours visible | 15 min |
+| 6.7 | Modifier / Supprimer un cours publié | 20 min |
+
+---
+
+### 🎯 PHASE 7 — Flow participation : passer un cours *(~3h)*
+> Un membre passe un cours, voit ses slides, répond au quiz, obtient sa note
+
+| Étape | Détail | Temps |
+|-------|--------|-------|
+| 7.1 | Page **lecture slides** : navigation slide par slide (précédent / suivant) | 30 min |
+| 7.2 | Page **quiz** : affichage des questions QCM avec boutons radio | 45 min |
+| 7.3 | Soumission quiz : calcul du score en % + création de la `Participation` | 30 min |
+| 7.4 | Page **résultats** : score % + pour chaque question bonne/mauvaise réponse + explication | 30 min |
+| 7.5 | Bloquer la re-participation si déjà une note | 15 min |
+
+---
+
+### ☁️ PHASE 8 — Déploiement AWS *(~6h)*
+> L'application tourne en ligne avec une URL publique
+
+| Étape | Détail | Temps |
+|-------|--------|-------|
+| 8.1 | Créer instance **EC2 t2.micro** Ubuntu + configurer Security Group (ports 22, 80) | 30 min |
+| 8.2 | Créer base **RDS PostgreSQL** + activer extension `pgvector` | 30 min |
+| 8.3 | Créer **bucket S3** + configurer les permissions IAM | 20 min |
+| 8.4 | SSH sur EC2 : installer Python, pip, virtualenv, Nginx, Gunicorn | 30 min |
+| 8.5 | Cloner le repo + configurer `.env` (clés OpenAI, AWS, DB) | 20 min |
+| 8.6 | Adapter `settings.py` pour PostgreSQL + S3 en production | 30 min |
+| 8.7 | `migrate` + `collectstatic` + créer superuser en prod | 15 min |
+| 8.8 | Configurer **Gunicorn** comme service systemd | 30 min |
+| 8.9 | Configurer **Nginx** comme reverse proxy | 30 min |
+| 8.10 | Tests complets sur l'URL publique + debug | 45 min |
+
+---
+
+### 🤖 PHASE 9 — [BONUS] Chatbot RAG *(~8h)*
+> Ajouté seulement si les phases 1-8 sont terminées
+
+| Étape | Détail | Temps |
+|-------|--------|-------|
+| 9.1 | Activer `pgvector` dans PostgreSQL + modèle `DocumentChunk` | 30 min |
+| 9.2 | À la publication : découper le texte PDF en chunks de ~500 tokens | 30 min |
+| 9.3 | Appel `text-embedding-3-small` pour chaque chunk + stockage pgvector | 45 min |
+| 9.4 | Fonction de recherche sémantique : vectoriser la question → top-K chunks | 45 min |
+| 9.5 | Appel GPT-4o avec contexte + question → réponse | 30 min |
+| 9.6 | Interface chatbot sur la page cours (zone de saisie + historique) | 90 min |
+| 9.7 | Tests + ajustements | 60 min |
+
+---
+
+### 🎓 PHASE 10 — Bilan & Soutenance *(~5h)*
+
+| Étape | Détail | Temps |
+|-------|--------|-------|
+| 10.1 | Rédiger le bilan : faisabilité, utilité, limites, recommandations | 90 min |
+| 10.2 | Préparer le **diaporama** (slides de présentation) | 90 min |
+| 10.3 | Préparer le **scénario de démo** (données réalistes) | 60 min |
+| 10.4 | Répétition de la présentation (15 min exposé + 5 min questions) | 60 min |
+
+---
+
+### 📊 Récapitulatif des temps
+
+| Phase | Description | Temps estimé |
+|-------|-------------|-------------|
+| 0 | Prérequis comptes & outils | ~2h |
+| 1 | Setup Django local | ~2h |
+| 2 | Auth & routing | ~2h |
+| 3 | Admin CRUD | ~4h |
+| 4 | Interface membre | ~3h |
+| 5 | Génération IA (PDF → cours) | ~4h |
+| 6 | Flow création cours | ~4h |
+| 7 | Flow participation | ~3h |
+| 8 | Déploiement AWS | ~6h |
+| 9 | **[BONUS]** Chatbot RAG | ~8h |
+| 10 | Bilan & soutenance | ~5h |
+| **TOTAL sans bonus** | | **~35h** |
+| **TOTAL avec bonus** | | **~43h** |
+
+---
 
 ---
 
