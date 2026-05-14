@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Mes cours{% endblock %}
+{% block nav_courses %}active{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">📖 Mes cours disponibles</h2>
+
+{% if courses %}
+  <div class="row row-cols-1 row-cols-md-3 g-4">
+    {% for course in courses %}
+    <div class="col">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <span class="badge bg-info text-dark mb-2">{{ course.group.name }}</span>
+          <h5 class="card-title">{{ course.title }}</h5>
+          <p class="small text-muted">{{ course.nb_slides }} slides · {{ course.nb_questions }} questions</p>
+        </div>
+        <div class="card-footer d-flex gap-2">
+          <a href="{% url 'courses:course_detail' course.pk %}" class="btn btn-sm btn-outline-primary">Voir</a>
+          {% if course.pk not in participated_ids %}
+            <a href="{% url 'participations:take_quiz' course.pk %}" class="btn btn-sm btn-success">Passer le quiz</a>
+          {% else %}
+            <span class="btn btn-sm btn-secondary disabled">Quiz terminé ✓</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-info">Aucun cours disponible pour vos groupes pour l'instant.</div>
+{% endif %}
+{% endblock %}

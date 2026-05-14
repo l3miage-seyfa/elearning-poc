@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}{{ course.title }}{% endblock %}
+
+{% block content %}
+<h2 class="mb-1">{{ course.title }}</h2>
+<p class="text-muted">{{ course.group.name }} · {{ slides|length }} slides · {{ questions|length }} questions</p>
+
+{% if slides %}
+<h4 class="mt-4 mb-3">📑 Slides</h4>
+<div class="accordion mb-4" id="slidesAccordion">
+  {% for slide in slides %}
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}"
+              type="button" data-bs-toggle="collapse" data-bs-target="#slide{{ slide.pk }}">
+        Slide {{ slide.order }}
+      </button>
+    </h2>
+    <div id="slide{{ slide.pk }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}">
+      <div class="accordion-body" style="white-space: pre-wrap;">{{ slide.content }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if questions %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">❓ Quiz ({{ questions|length }} questions)</h4>
+  <a href="{% url 'participations:take_quiz' course.pk %}" class="btn btn-success">Passer le quiz →</a>
+</div>
+{% endif %}
+
+<a href="{% url 'courses:member_courses' %}" class="btn btn-outline-secondary mt-2">← Retour</a>
+{% endblock %}

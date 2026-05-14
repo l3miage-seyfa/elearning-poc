@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Résultat — {{ participation.course.title }}{% endblock %}
+
+{% block content %}
+<div class="text-center py-5">
+  {% if participation.score >= 80 %}
+    <div style="font-size:4rem;">🏆</div>
+    <h2 class="text-success mt-2">Excellent !</h2>
+  {% elif participation.score >= 50 %}
+    <div style="font-size:4rem;">👍</div>
+    <h2 class="text-primary mt-2">Bien joué !</h2>
+  {% else %}
+    <div style="font-size:4rem;">📚</div>
+    <h2 class="text-warning mt-2">Continuez à apprendre !</h2>
+  {% endif %}
+
+  <p class="lead mt-3">Votre score : <strong>{{ participation.score }}%</strong></p>
+  <p class="text-muted">{{ participation.course.title }}</p>
+  <p class="text-muted small">Terminé le {{ participation.completed_at|date:"d/m/Y à H:i" }}</p>
+
+  <a href="{% url 'courses:member_courses' %}" class="btn btn-primary mt-3">← Retour aux cours</a>
+</div>
+{% endblock %}
