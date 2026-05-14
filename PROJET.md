@@ -39,28 +39,45 @@ Dans le cadre du cours **Systèmes de Gestion des Connaissances** (M2 MIAGE), no
 - Librairie officielle `openai` en Python
 
 ### 3.2 Stack technique
-**✅ CHOIX ACTÉ :**
+**✅ CHOIX ACTÉ ET DÉFINITIF :**
 
 ```
 LLM         : OpenAI GPT-4o (API)
+Embeddings  : OpenAI text-embedding-3-small (pour RAG chatbot - phase bonus)
 Backend     : Python 3.11 + Django (auth + ORM + admin intégrés)
 Frontend    : Django Templates (HTML/Jinja2, sans CSS élaboré, tables simples)
-BDD         : PostgreSQL (AWS RDS - free tier)
+BDD         : PostgreSQL sur AWS RDS (db.t3.micro - free tier)
+              + extension pgvector (stockage vecteurs pour RAG - activée dès le début)
 PDF parsing : PyMuPDF (fitz)
-Fichiers    : AWS S3 (stockage PDFs uploadés)
+Fichiers    : AWS S3 (stockage persistant des PDFs uploadés)
 Déploiement : AWS EC2 (t2.micro - free tier) + Gunicorn + Nginx
-URL         : URL publique AWS (ou nom de domaine custom optionnel)
+URL         : URL publique AWS (ex: http://ec2-xx-xx.compute.amazonaws.com)
 ```
 
-> **Pourquoi Django ?** Auth, panneau admin, ORM et gestion des sessions sont inclus nativement. Pas de deux serveurs à gérer. Idéal pour un POC avec plusieurs rôles et entités.
+> **Pourquoi pgvector et pas ChromaDB ?** pgvector est une **extension PostgreSQL** : pas de service supplémentaire à héberger. Les vecteurs sont stockés directement dans la base RDS existante. ChromaDB nécessiterait un serveur séparé sur EC2.
 
-> **Pourquoi PostgreSQL et pas SQLite ?** SQLite est un fichier local — incompatible avec un déploiement cloud propre (perte de données à chaque redéploiement). PostgreSQL sur RDS est gratuit (free tier AWS) et robuste.
+> **Pourquoi Django ?** Auth, panneau admin, ORM et gestion des sessions sont inclus nativement. Un seul projet à gérer.
+
+> **Pourquoi RDS et pas SQLite ?** SQLite est un fichier stocké sur le disque de l'instance EC2. Si l'instance est arrêtée, recréée ou crashe → **toutes les données sont perdues**. RDS est un service de base de données indépendant de l'instance EC2 : les données survivent à tout redémarrage ou recréation du serveur.
+
+> **Pourquoi S3 et pas fichiers locaux ?** Les fichiers stockés localement sur EC2 disparaissent avec l'instance. S3 est un stockage objet **permanent et indépendant** du serveur : les PDFs uploadés sont conservés même si l'instance EC2 est recréée.
 
 ### 3.3 Pattern IA utilisé
-**✅ Prompt Engineering structuré**
-- Génération des slides : envoi du texte extrait du PDF + instructions précises à GPT-4o
-- Génération des questions QCM : prompt séparé, nombre configurable
-- Pas de RAG, pas de fine-tuning (hors périmètre POC)
+**✅ Deux patterns selon la fonctionnalité :**
+
+**Phase principale — Prompt Engineering direct**
+- Extraction du texte PDF via PyMuPDF
+- Envoi du texte complet + prompt structuré à GPT-4o en un seul appel
+- GPT-4o retourne un JSON avec slides + questions QCM + explications
+- Limite : texte tronqué à ~50 000 tokens si PDF très long (largement suffisant)
+- Pas de fine-tuning
+
+**Phase bonus — RAG (Retrieval-Augmented Generation) pour chatbot**
+- À la publication du cours, le texte du PDF est découpé en chunks
+- Chaque chunk est transformé en vecteur via `OpenAI text-embedding-3-small`
+- Les vecteurs sont stockés dans PostgreSQL via l'extension `pgvector`
+- Quand un membre pose une question : sa question est vectorisée → recherche des chunks les plus proches → envoi à GPT-4o avec le contexte → réponse
+- Implémenté via `django-pgvector` + `psycopg2`
 
 ---
 
@@ -141,7 +158,22 @@ URL         : URL publique AWS (ou nom de domaine custom optionnel)
 
 ---
 
-### 4.6 Participation (Historique d'un membre)
+### 4.6 DocumentChunk (Phase bonus — RAG chatbot)
+| Champ | Type | Contrainte |
+|-------|------|-----------|
+| `id` | Integer | PK, auto |
+| `course` | FK → Course | requis |
+| `chunk_index` | Integer | ordre du chunk dans le document |
+| `content` | Text | texte brut du chunk |
+| `embedding` | Vector(1536) | vecteur OpenAI (pgvector) |
+
+- Généré automatiquement à la publication du cours
+- Supprimé si le cours est supprimé (cascade)
+- Utilisé uniquement par le chatbot
+
+---
+
+### 4.7 Participation (Historique d'un membre)
 | Champ | Type | Contrainte |
 |-------|------|-----------|
 | `id` | Integer | PK, auto |
@@ -228,6 +260,7 @@ L'inverse **n'est pas vrai** : un membre d'un groupe parent ne voit **pas** les 
 | Page groupe (responsable) | Liste des cours du groupe + bouton "Créer un cours" + liste membres |
 | Créer un cours | Upload PDF + config nb slides/questions → génération IA → review/édition → publication |
 | Passer un cours | Slides en lecture → quiz → résultats avec score % et explications |
+| Chatbot cours *(bonus)* | Onglet sur la page cours : poser une question sur le contenu du PDF → réponse GPT-4o via RAG |
 
 ---
 
@@ -246,9 +279,10 @@ L'inverse **n'est pas vrai** : un membre d'un groupe parent ne voit **pas** les 
 | 8 | Flow création cours : upload → génération → édition → publication | 🔲 À faire |
 | 9 | Flow participation : slides → quiz → résultats | 🔲 À faire |
 | 10 | Tests avec données réelles | 🔲 À faire |
-| 11 | Déploiement AWS (EC2 + RDS + S3 + Nginx) | 🔲 À faire |
-| 12 | Bilan : faisabilité, utilité, limites | 🔲 À faire |
-| 13 | Préparation démo + diaporama soutenance | 🔲 À faire |
+| 11 | Déploiement AWS (EC2 + RDS + pgvector + S3 + Nginx) | 🔲 À faire |
+| 12 | **[BONUS]** Chatbot RAG : chunks + embeddings + pgvector + interface | 🔲 À faire |
+| 13 | Bilan : faisabilité, utilité, limites | 🔲 À faire |
+| 14 | Préparation démo + diaporama soutenance | 🔲 À faire |
 
 ---
 
