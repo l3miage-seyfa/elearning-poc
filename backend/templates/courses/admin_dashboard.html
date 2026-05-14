@@ -1,18 +1,78 @@
 {% extends 'base.html' %}
-{% block title %}Gestion des cours{% endblock %}
+{% block title %}Tableau de bord Admin{% endblock %}
 {% block nav_admin %}active{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h2><i class="bi bi-gear me-2"></i>Tableau de bord Admin</h2>
-  <div class="d-flex gap-2">
-    <a href="{% url 'courses:upload_pdf' %}" class="btn btn-success"><i class="bi bi-file-earmark-arrow-up me-1"></i>Upload PDF + IA</a>
-    <a href="{% url 'courses:course_create' %}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Nouveau cours</a>
+<h2 class="mb-4"><i class="bi bi-gear me-2"></i>Tableau de bord Admin</h2>
+
+<!-- Compteurs -->
+<div class="row row-cols-2 row-cols-md-5 g-3 mb-4">
+  <div class="col">
+    <div class="card text-center shadow-sm h-100">
+      <div class="card-body py-3">
+        <div class="fs-2 fw-bold text-primary">{{ stats.nb_persons }}</div>
+        <div class="text-muted small">Personnes</div>
+      </div>
+      <div class="card-footer p-0">
+        <a href="{% url 'accounts:person_list' %}" class="btn btn-sm btn-link w-100">Gérer</a>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card text-center shadow-sm h-100">
+      <div class="card-body py-3">
+        <div class="fs-2 fw-bold text-primary">{{ stats.nb_groups }}</div>
+        <div class="text-muted small">Groupes</div>
+      </div>
+      <div class="card-footer p-0">
+        <a href="{% url 'groups:group_list' %}" class="btn btn-sm btn-link w-100">Gérer</a>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card text-center shadow-sm h-100">
+      <div class="card-body py-3">
+        <div class="fs-2 fw-bold text-primary">{{ stats.nb_courses }}</div>
+        <div class="text-muted small">Cours total</div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card text-center shadow-sm h-100">
+      <div class="card-body py-3">
+        <div class="fs-2 fw-bold text-success">{{ stats.nb_published }}</div>
+        <div class="text-muted small">Cours publiés</div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card text-center shadow-sm h-100">
+      <div class="card-body py-3">
+        <div class="fs-2 fw-bold text-info">{{ stats.nb_participations }}</div>
+        <div class="text-muted small">Participations</div>
+      </div>
+    </div>
   </div>
 </div>
 
+<!-- Actions rapides -->
+<div class="d-flex gap-2 mb-4">
+  <a href="{% url 'courses:upload_pdf' %}" class="btn btn-success">
+    <i class="bi bi-file-earmark-arrow-up me-1"></i>Upload PDF + IA
+  </a>
+  <a href="{% url 'accounts:person_create' %}" class="btn btn-outline-primary">
+    <i class="bi bi-person-plus me-1"></i>Ajouter une personne
+  </a>
+  <a href="{% url 'groups:group_create' %}" class="btn btn-outline-primary">
+    <i class="bi bi-plus-circle me-1"></i>Créer un groupe
+  </a>
+</div>
+
+<!-- Liste des cours -->
 <div class="card shadow-sm">
-  <div class="card-header fw-semibold">Tous les cours ({{ courses|length }})</div>
+  <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+    <span>Tous les cours</span>
+  </div>
   <div class="table-responsive">
     <table class="table table-hover mb-0">
       <thead class="table-light">
@@ -54,3 +114,4 @@
   </div>
 </div>
 {% endblock %}
+

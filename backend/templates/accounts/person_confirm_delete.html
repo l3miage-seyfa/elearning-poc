@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}Supprimer {{ person.user.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="card border-danger shadow-sm" style="max-width: 500px;">
+  <div class="card-body p-4">
+    <h4 class="text-danger mb-3"><i class="bi bi-exclamation-triangle me-2"></i>Confirmer la suppression</h4>
+    <p>Vous êtes sur le point de supprimer :</p>
+    <p class="fw-semibold fs-5">{{ person.user.get_full_name }} — {{ person.user.email }}</p>
+    <p class="text-muted small">Cette action est irréversible. Toutes ses participations et appartenances à des groupes seront supprimées.</p>
+    <form method="post" class="d-flex gap-2 mt-4">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">
+        <i class="bi bi-trash me-1"></i>Supprimer définitivement
+      </button>
+      <a href="{% url 'accounts:person_list' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Annuler
+      </a>
+    </form>
+  </div>
+</div>
+{% endblock %}

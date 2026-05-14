@@ -11,12 +11,24 @@ from .models import Course, Slide, Question
 
 @admin_required
 def admin_dashboard(request):
-    """Vue principale de l'admin : liste tous les cours et groupes."""
+    """Vue principale de l'admin : compteurs + liste des cours."""
+    from accounts.models import Person
+    from participations.models import Participation
+
     courses = Course.objects.select_related('group', 'created_by__user').order_by('-created_at')
-    groups = Group.objects.all()
+    groups  = Group.objects.all()
+
+    stats = {
+        'nb_persons':      Person.objects.count(),
+        'nb_groups':       Group.objects.count(),
+        'nb_courses':      courses.count(),
+        'nb_published':    courses.filter(is_published=True).count(),
+        'nb_participations': Participation.objects.count(),
+    }
     return render(request, 'courses/admin_dashboard.html', {
         'courses': courses,
-        'groups': groups,
+        'groups':  groups,
+        'stats':   stats,
     })
 
 
