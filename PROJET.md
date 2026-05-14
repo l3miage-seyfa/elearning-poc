@@ -45,12 +45,16 @@ Dans le cadre du cours **Systèmes de Gestion des Connaissances** (M2 MIAGE), no
 LLM         : OpenAI GPT-4o (API)
 Backend     : Python 3.11 + Django (auth + ORM + admin intégrés)
 Frontend    : Django Templates (HTML/Jinja2, sans CSS élaboré, tables simples)
-BDD         : SQLite (léger, suffisant pour POC)
+BDD         : PostgreSQL (AWS RDS - free tier)
 PDF parsing : PyMuPDF (fitz)
-Déploiement : Local (démo en live)
+Fichiers    : AWS S3 (stockage PDFs uploadés)
+Déploiement : AWS EC2 (t2.micro - free tier) + Gunicorn + Nginx
+URL         : URL publique AWS (ou nom de domaine custom optionnel)
 ```
 
 > **Pourquoi Django ?** Auth, panneau admin, ORM et gestion des sessions sont inclus nativement. Pas de deux serveurs à gérer. Idéal pour un POC avec plusieurs rôles et entités.
+
+> **Pourquoi PostgreSQL et pas SQLite ?** SQLite est un fichier local — incompatible avec un déploiement cloud propre (perte de données à chaque redéploiement). PostgreSQL sur RDS est gratuit (free tier AWS) et robuste.
 
 ### 3.3 Pattern IA utilisé
 **✅ Prompt Engineering structuré**
@@ -242,12 +246,81 @@ L'inverse **n'est pas vrai** : un membre d'un groupe parent ne voit **pas** les 
 | 8 | Flow création cours : upload → génération → édition → publication | 🔲 À faire |
 | 9 | Flow participation : slides → quiz → résultats | 🔲 À faire |
 | 10 | Tests avec données réelles | 🔲 À faire |
-| 11 | Bilan : faisabilité, utilité, limites | 🔲 À faire |
-| 12 | Préparation démo + diaporama soutenance | 🔲 À faire |
+| 11 | Déploiement AWS (EC2 + RDS + S3 + Nginx) | 🔲 À faire |
+| 12 | Bilan : faisabilité, utilité, limites | 🔲 À faire |
+| 13 | Préparation démo + diaporama soutenance | 🔲 À faire |
 
 ---
 
-## 10. Bilan anticipé
+## 10. Architecture de déploiement AWS ✅
+
+### Infrastructure cible
+
+```
+┌─────────────────────────────────────────────────────┐
+│                      AWS Cloud                       │
+│                                                     │
+│   ┌──────────────┐        ┌───────────────────┐    │
+│   │  EC2 t2.micro │        │   RDS PostgreSQL   │    │
+│   │  (free tier)  │◄──────►│   (free tier)     │    │
+│   │               │        └───────────────────┘    │
+│   │  Nginx        │                                  │
+│   │  Gunicorn     │        ┌───────────────────┐    │
+│   │  Django app   │◄──────►│   S3 Bucket       │    │
+│   └──────────────┘        │  (PDFs uploadés)  │    │
+│          │                 └───────────────────┘    │
+│          │ URL publique                              │
+└──────────┼──────────────────────────────────────────┘
+           │
+     http://ec2-xx-xx-xx-xx.compute.amazonaws.com
+```
+
+### Services AWS utilisés
+
+| Service | Usage | Coût estimé |
+|---------|-------|-------------|
+| **EC2 t2.micro** | Serveur applicatif Django + Gunicorn + Nginx | Gratuit (free tier 12 mois) |
+| **RDS PostgreSQL** (db.t3.micro) | Base de données | Gratuit (free tier 12 mois) |
+| **S3** | Stockage des PDFs uploadés + fichiers statiques | ~$0 pour un POC |
+| **Security Groups** | Firewall : ports 80 (HTTP) et 22 (SSH) ouverts | Gratuit |
+
+### Stack serveur sur EC2
+```
+OS          : Ubuntu 22.04 LTS
+Serveur web : Nginx (reverse proxy)
+WSGI        : Gunicorn
+App         : Django
+Process mgr : systemd (ou supervisor)
+Env vars    : fichier .env sur le serveur (clé OpenAI, DB password...)
+```
+
+### Variables d'environnement à configurer
+```bash
+DJANGO_SECRET_KEY=...
+DJANGO_DEBUG=False
+DJANGO_ALLOWED_HOSTS=ec2-xx-xx-xx-xx.compute.amazonaws.com
+DATABASE_URL=postgres://user:password@rds-endpoint:5432/doculearn
+OPENAI_API_KEY=sk-...
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_S3_BUCKET_NAME=doculearn-uploads
+```
+
+### Étapes de déploiement (résumé)
+1. Créer une instance EC2 t2.micro (Ubuntu)
+2. Créer une base RDS PostgreSQL (free tier)
+3. Créer un bucket S3 pour les uploads
+4. Installer Python, Nginx, Gunicorn sur EC2
+5. Cloner le repo git sur EC2
+6. Configurer le `.env` avec les variables
+7. `python manage.py migrate` + `collectstatic`
+8. Configurer Gunicorn comme service systemd
+9. Configurer Nginx comme reverse proxy
+10. Ouvrir le port 80 dans le Security Group
+
+---
+
+## 11. Bilan anticipé
 
 ### Gains attendus
 - Création de modules de formation depuis un PDF en quelques minutes
