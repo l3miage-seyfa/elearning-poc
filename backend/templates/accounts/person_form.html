@@ -23,8 +23,15 @@
       </div>
       <div class="mb-3">
         <label class="form-label fw-semibold">Email</label>
-        <input type="email" name="email" class="form-control"
-               value="{{ values.email|default:'' }}" required>
+        <div class="input-group">
+          <input type="email" name="email" class="form-control"
+                 value="{{ values.email|default:'' }}" required
+                 placeholder="prenom.nom@connect-tech.sncf">
+          <button class="btn btn-outline-secondary" type="button"
+                  onclick="const f=this.closest('form').querySelector('[name=email]');if(!f.value.includes('@'))f.value+=f.value?'@connect-tech.sncf':''">
+            @connect-tech.sncf
+          </button>
+        </div>
       </div>
       <div class="mb-3">
         <label class="form-label fw-semibold">
