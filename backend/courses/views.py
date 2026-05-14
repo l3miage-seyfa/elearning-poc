@@ -50,11 +50,18 @@ def member_courses(request):
         group_id__in=all_group_ids
     ).select_related('group', 'created_by__user').order_by('-created_at')
 
-    # Ajoute les participations existantes
+    # Ajoute les participations existantes (dernière tentative par cours)
     from participations.models import Participation
-    participations = Participation.objects.filter(person=person, score__isnull=False)
-    participated_ids = set(p.course_id for p in participations)
-    participated_pks = {p.course_id: p.pk for p in participations}  # course_pk → participation_pk
+    participations = Participation.objects.filter(person=person, score__isnull=False).order_by('-completed_at')
+    # Garde uniquement la dernière tentative par cours
+    seen = set()
+    participated_ids = set()
+    participated_pks = {}
+    for p in participations:
+        if p.course_id not in seen:
+            seen.add(p.course_id)
+            participated_ids.add(p.course_id)
+            participated_pks[p.course_id] = p.pk
 
     return render(request, 'courses/member_courses.html', {
         'courses': courses,
@@ -311,6 +318,24 @@ def group_file_rename(request, pk, file_pk):
     return redirect('courses:responsible_group', pk=pk)
 
 
+@login_and_person_required
+def group_file_download(request, pk, file_pk):
+    """Téléchargement sécurisé d'un fichier du groupe (membres + responsable + admin uniquement)."""
+    from groups.models import GroupFile
+    from django.http import FileResponse, Http404
+    group = get_object_or_404(Group, pk=pk)
+    person = request.user.person
+    # Vérifier que l'utilisateur est membre, responsable ou admin
+    is_member = group.members.filter(pk=person.pk).exists()
+    if not (person.is_admin or group.responsible == person or is_member):
+        raise Http404
+    gf = get_object_or_404(GroupFile, pk=file_pk, group=group)
+    try:
+        return FileResponse(gf.file.open('rb'), as_attachment=True, filename=f"{gf.name}.pdf")
+    except FileNotFoundError:
+        raise Http404
+
+
 @responsible_required
 def group_file_delete(request, pk, file_pk):
     """Supprime un fichier du groupe."""
@@ -358,23 +383,33 @@ def course_create_wizard(request, pk):
         file_name = ''
 
         if file_source == 'new':
-            uploaded = request.FILES.get('new_file')
-            file_name_input = request.POST.get('new_file_name', '').strip()
-            if not uploaded:
+            uploaded_files = request.FILES.getlist('new_file[]')
+            file_names     = request.POST.getlist('new_file_name[]')
+            # Compat ancien format (champ unique)
+            if not uploaded_files:
+                single = request.FILES.get('new_file')
+                if single:
+                    uploaded_files = [single]
+                    file_names     = [request.POST.get('new_file_name', '').strip()]
+            if not uploaded_files:
                 messages.error(request, "Veuillez sélectionner un fichier.")
                 return render(request, 'courses/course_create_wizard.html', {
                     'group': group, 'group_files': group_files
                 })
-            if not file_name_input:
-                file_name_input = uploaded.name
-            # Sauvegarde dans les fichiers du groupe
-            gf = GroupFile.objects.create(
-                group=group, name=file_name_input,
-                file=uploaded, uploaded_by=person
-            )
-            gf.file.seek(0)
-            pdf_bytes = gf.file.read()
-            file_name = file_name_input
+            # Sauvegarde tous les fichiers dans la bibliothèque du groupe
+            saved_gfs = []
+            for i, uploaded in enumerate(uploaded_files):
+                fname = file_names[i].strip() if i < len(file_names) and file_names[i].strip() else uploaded.name
+                gf = GroupFile.objects.create(
+                    group=group, name=fname,
+                    file=uploaded, uploaded_by=person
+                )
+                saved_gfs.append(gf)
+            # Utilise le premier fichier pour générer le cours
+            primary_gf = saved_gfs[0]
+            primary_gf.file.seek(0)
+            pdf_bytes = primary_gf.file.read()
+            file_name = primary_gf.name
         else:
             file_id = request.POST.get('file_id')
             if not file_id:

@@ -23,5 +23,4 @@ class Participation(models.Model):
     class Meta:
         verbose_name = "Participation"
         verbose_name_plural = "Participations"
-        unique_together = [('person', 'course')]
         ordering = ['-completed_at']

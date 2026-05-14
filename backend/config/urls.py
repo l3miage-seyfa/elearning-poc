@@ -17,12 +17,14 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.shortcuts import redirect
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('django-admin/', admin.site.urls),
-    path('', lambda request: redirect('accounts:dashboard'), name='home'),
+    path('', lambda request: redirect('courses:admin_dashboard') if request.user.is_authenticated and getattr(getattr(request.user, 'person', None), 'is_admin', False) else redirect('courses:member_courses'), name='home'),
     path('accounts/', include('accounts.urls')),
     path('groupes/', include('groups.urls')),
     path('cours/', include('courses.urls')),
     path('participations/', include('participations.urls')),
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

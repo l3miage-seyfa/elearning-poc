@@ -71,17 +71,28 @@
 
       <!-- Nouveau fichier -->
       <div id="newSection" {% if group_files %}style="display:none"{% endif %}>
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Nom du fichier</label>
-            <input type="text" name="new_file_name" class="form-control" placeholder="Ex : Support RGPD 2026">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Fichier PDF</label>
-            <input type="file" name="new_file" class="form-control" accept=".pdf">
-          </div>
+        <!-- Input caché -->
+        <input type="file" id="hiddenNewFileInput" accept=".pdf" style="display:none;">
+
+        <!-- Liste des fichiers sélectionnés -->
+        <div id="newFileList" class="mb-3"></div>
+
+        <!-- Bouton principal (grand, centré si aucun fichier) -->
+        <div id="addFileZone" class="text-center py-4">
+          <button type="button" id="addFileBtn"
+                  class="btn btn-outline-danger btn-lg px-5 py-3" style="border-style:dashed; border-width:2px;">
+            <i class="bi bi-file-earmark-pdf fs-3 d-block mb-2"></i>
+            Choisir un fichier PDF
+          </button>
+          <p class="text-muted small mt-2"><i class="bi bi-info-circle me-1"></i>Le(s) fichier(s) seront ajoutés à la bibliothèque du groupe.</p>
         </div>
-        <p class="text-muted small mt-1"><i class="bi bi-info-circle me-1"></i>Ce fichier sera ajouté à la bibliothèque du groupe.</p>
+
+        <!-- Bouton "ajouter un autre" (affiché après le 1er fichier) -->
+        <div id="addAnotherZone" style="display:none;">
+          <button type="button" id="addAnotherBtn" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-plus-circle me-1"></i>Ajouter un autre fichier
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -117,14 +128,97 @@
 
 {% block extra_js %}
 <script>
-// Toggle source sections
+// ── Nouveau fichier : sélection multiple dynamique ───────────────────────────
+(function () {
+  const hiddenInput   = document.getElementById('hiddenNewFileInput');
+  const fileList      = document.getElementById('newFileList');
+  const addFileBtn    = document.getElementById('addFileBtn');
+  const addFileZone   = document.getElementById('addFileZone');
+  const addAnotherBtn = document.getElementById('addAnotherBtn');
+  const addAnotherZone= document.getElementById('addAnotherZone');
+  if (!addFileBtn) return;
+
+  let fileCount = 0;
+
+  function triggerPicker() { hiddenInput.click(); }
+  addFileBtn.addEventListener('click', triggerPicker);
+  addAnotherBtn.addEventListener('click', triggerPicker);
+
+  hiddenInput.addEventListener('change', function () {
+    if (!this.files.length) return;
+    const file = this.files[0];
+    const idx  = fileCount++;
+    const defaultName = file.name.replace(/\.pdf$/i, '');
+
+    // Crée un input file caché portant le fichier réel
+    const realInput = document.createElement('input');
+    realInput.type = 'file';
+    realInput.name = 'new_file[]';
+    realInput.style.display = 'none';
+    // Transfère le fichier via DataTransfer
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    realInput.files = dt.files;
+    fileList.appendChild(realInput);
+
+    // Input nom
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.name = 'new_file_name[]';
+    nameInput.value = defaultName;
+    nameInput.className = 'form-control form-control-sm flex-grow-1';
+    nameInput.placeholder = 'Nom du fichier';
+    nameInput.required = true;
+
+    // Badge PDF
+    const badge = document.createElement('span');
+    badge.className = 'badge bg-danger-subtle text-danger border border-danger-subtle small text-truncate';
+    badge.style.maxWidth = '160px';
+    badge.innerHTML = `<i class="bi bi-file-earmark-pdf me-1"></i>${file.name}`;
+
+    // Bouton supprimer
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'btn btn-sm btn-outline-danger';
+    delBtn.title = 'Supprimer';
+    delBtn.innerHTML = '<i class="bi bi-x-lg"></i>';
+
+    // Card de la ligne
+    const card = document.createElement('div');
+    card.className = 'd-flex align-items-center gap-2 border rounded p-2 bg-light mb-2';
+    card.dataset.idx = idx;
+    card.appendChild(badge);
+    card.appendChild(nameInput);
+    card.appendChild(delBtn);
+    fileList.appendChild(card);
+
+    delBtn.addEventListener('click', () => {
+      card.remove();
+      realInput.remove();
+      if (fileList.querySelectorAll('[data-idx]').length === 0) {
+        addFileZone.style.display = '';
+        addAnotherZone.style.display = 'none';
+      }
+    });
+
+    // Passe le bouton principal en petit + montre "Ajouter un autre"
+    addFileZone.style.display = 'none';
+    addAnotherZone.style.display = '';
+
+    // Reset pour pouvoir choisir un nouveau fichier ensuite
+    hiddenInput.value = '';
+  });
+})();
+
+// ── Toggle source sections ───────────────────────────────────────────────────
 document.querySelectorAll('input[name="file_source"]').forEach(r => {
   r.addEventListener('change', function () {
     document.getElementById('existingSection').style.display = this.value === 'existing' ? '' : 'none';
     document.getElementById('newSection').style.display      = this.value === 'new'      ? '' : 'none';
   });
 });
-// Overlay submit
+
+// ── Overlay submit ───────────────────────────────────────────────────────────
 document.getElementById('wizardForm').addEventListener('submit', function () {
   const overlay = document.getElementById('generatingOverlay');
   overlay.style.display = 'flex';

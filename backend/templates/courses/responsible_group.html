@@ -2,7 +2,7 @@
 {% load course_extras %}
 {% block title %}Groupe {{ group.name }} — Responsable{% endblock %}
 {% block content %}
-<div class="d-flex align-items-center gap-2 mb-1">
+<div class="d-flex align-items-center gap-2 mb-4">
   <i class="bi bi-people-fill fs-3 text-primary"></i>
   <div>
     <h1 class="h3 mb-0">{{ group.name }}</h1>
@@ -19,64 +19,202 @@
   {% endfor %}
 {% endif %}
 
-<!-- Fichiers du groupe -->
-<div class="card mb-4">
+<!-- ═══ 1. MEMBRES ════════════════════════════════════════════════════════════ -->
+<div class="card mb-1">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-person-lines-fill text-primary"></i>
+    <strong>Membres ({{ members|length }})</strong>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 small">
+      <thead class="table-light text-uppercase" style="font-size:.75rem; letter-spacing:.04em;">
+        <tr>
+          <th>Nom</th>
+          <th>Prénom</th>
+          <th>Email</th>
+          <th class="text-center" style="width:120px;">Participations</th>
+          <th style="width:60px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for membership in members %}
+        {% with p=membership.person %}
+        <tr>
+          <td class="fw-semibold">{{ p.user.last_name|upper }}</td>
+          <td>{{ p.user.first_name }}</td>
+          <td><a href="mailto:{{ p.user.email }}" class="text-decoration-none text-muted">{{ p.user.email }}</a></td>
+          <td class="text-center">
+            {% with nb=p.participations.count %}
+              {% if nb %}<span class="badge rounded-pill bg-success">{{ nb }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
+            {% endwith %}
+          </td>
+          <td class="text-end">
+            {% if p != group.responsible %}
+            <form method="post" action="{% url 'courses:group_remove_member' pk=group.pk person_pk=p.pk %}"
+                  onsubmit="return confirm('Retirer {{ p.user.get_full_name }} du groupe ?')">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-danger" title="Retirer"><i class="bi bi-person-dash"></i></button>
+            </form>
+            {% else %}
+            <span class="badge bg-warning text-dark"><i class="bi bi-shield-fill me-1"></i>Resp.</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endwith %}
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-4"><i class="bi bi-people me-1"></i>Aucun membre dans ce groupe.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Bouton + formulaire ajout membre -->
+<div class="mt-1 mb-5">
+  <button class="btn btn-sm btn-outline-primary" type="button"
+          data-bs-toggle="collapse" data-bs-target="#addMemberForm">
+    <i class="bi bi-person-plus me-1"></i>Ajouter un membre
+  </button>
+  <div class="collapse mt-2" id="addMemberForm">
+    <form method="post" action="{% url 'courses:group_add_member' pk=group.pk %}" class="d-flex gap-2 align-items-end flex-wrap mt-1">
+      {% csrf_token %}
+      <div class="flex-grow-1" style="min-width:260px; position:relative;">
+        <input type="email" name="email" id="memberEmailInput"
+               class="form-control" placeholder="prenom.nom@entreprise.fr"
+               autocomplete="off" required>
+        <ul id="memberSuggestions" class="list-group position-absolute w-100 shadow-sm"
+            style="z-index:1050; top:100%; display:none;"></ul>
+      </div>
+      <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-plus-circle me-1"></i>Ajouter</button>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ 2. COURS ══════════════════════════════════════════════════════════════ -->
+<div class="card mb-1">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-journal-richtext text-success"></i>
+    <strong>Cours du groupe ({{ courses|length }})</strong>
+  </div>
+
+  {% if courses %}
+  <div class="accordion accordion-flush" id="coursesAccordion">
+    {% for course in courses %}
+    <div class="accordion-item">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed py-3" type="button" data-bs-toggle="collapse"
+                data-bs-target="#course{{ course.pk }}">
+          <span class="me-2">
+            {% if course.is_published %}<i class="bi bi-check-circle-fill text-success"></i>
+            {% else %}<i class="bi bi-hourglass-split text-warning"></i>{% endif %}
+          </span>
+          <span class="fw-semibold">{{ course.title }}</span>
+          <span class="ms-3 badge rounded-pill bg-light text-dark border">{{ course.nb_slides }} slides</span>
+          <span class="ms-1 badge rounded-pill bg-light text-dark border">{{ course.nb_questions }} questions</span>
+        </button>
+      </h2>
+      <div id="course{{ course.pk }}" class="accordion-collapse collapse">
+        <div class="accordion-body pt-2">
+          <div class="d-flex gap-2 mb-3 flex-wrap">
+            <a href="{% url 'courses:course_detail' pk=course.pk %}" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-eye me-1"></i>Aperçu
+            </a>
+            <a href="{% url 'courses:review_slides' pk=course.pk %}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-pencil-square me-1"></i>Éditer
+            </a>
+            <form method="post" action="{% url 'courses:course_publish' pk=course.pk %}" class="d-inline">
+              {% csrf_token %}
+              {% if course.is_published %}
+              <button type="submit" class="btn btn-sm btn-outline-warning"><i class="bi bi-eye-slash me-1"></i>Dépublier</button>
+              {% else %}
+              <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-rocket-takeoff me-1"></i>Publier</button>
+              {% endif %}
+            </form>
+            <a href="{% url 'courses:course_delete' pk=course.pk %}" class="btn btn-sm btn-outline-danger ms-auto">
+              <i class="bi bi-trash3 me-1"></i>Supprimer
+            </a>
+          </div>
+          {% with parts=participations_by_course|get_item:course.pk %}
+          {% if parts %}
+          <p class="small fw-semibold text-muted mb-1"><i class="bi bi-bar-chart me-1"></i>Participations</p>
+          <table class="table table-sm table-hover align-middle mb-0 small">
+            <thead class="table-light text-uppercase" style="font-size:.72rem; letter-spacing:.04em;">
+              <tr><th>Participant</th><th class="text-center" style="width:90px;">Score</th><th style="width:140px;">Date</th></tr>
+            </thead>
+            <tbody>
+              {% for part in parts %}
+              <tr>
+                <td>{{ part.person.user.get_full_name }}</td>
+                <td class="text-center">
+                  {% if part.score is not None %}
+                  <span class="badge rounded-pill {% if part.score >= 80 %}bg-success{% elif part.score >= 50 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                    {{ part.score|floatformat:0 }}%
+                  </span>
+                  {% else %}—{% endif %}
+                </td>
+                <td class="text-muted">{{ part.completed_at|date:"d/m/Y H:i"|default:"—" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p class="text-muted mb-0 small"><i class="bi bi-info-circle me-1"></i>Aucune participation.</p>
+          {% endif %}
+          {% endwith %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card-body text-muted small">
+    <i class="bi bi-info-circle me-1"></i>Aucun cours créé pour ce groupe.
+  </div>
+  {% endif %}
+</div>
+
+<!-- Bouton créer un cours -->
+<div class="mt-1 mb-5">
+  <a href="{% url 'courses:course_create_wizard' pk=group.pk %}" class="btn btn-sm btn-outline-success">
+    <i class="bi bi-plus-circle me-1"></i>Créer un cours
+  </a>
+</div>
+
+<!-- ═══ 3. FICHIERS ═══════════════════════════════════════════════════════════ -->
+<div class="card mb-1">
   <div class="card-header d-flex align-items-center gap-2">
     <i class="bi bi-folder2-open text-warning"></i>
     <strong>Fichiers du groupe ({{ group_files|length }})</strong>
-    <button class="btn btn-sm btn-outline-warning ms-auto" type="button"
-            data-bs-toggle="collapse" data-bs-target="#uploadFileForm">
-      <i class="bi bi-upload me-1"></i>Ajouter un fichier
-    </button>
-  </div>
-
-  <div class="collapse" id="uploadFileForm">
-    <div class="card-body border-bottom bg-light">
-      <form method="post" action="{% url 'courses:group_file_upload' pk=group.pk %}" enctype="multipart/form-data"
-            class="row g-2 align-items-end">
-        {% csrf_token %}
-        <div class="col-md-5">
-          <label class="form-label mb-1 fw-semibold small">Nom</label>
-          <input type="text" name="name" class="form-control" placeholder="Ex : Support RGPD 2026" required>
-        </div>
-        <div class="col-md-5">
-          <label class="form-label mb-1 fw-semibold small">Fichier PDF</label>
-          <input type="file" name="file" class="form-control" accept=".pdf" required>
-        </div>
-        <div class="col-md-2">
-          <button type="submit" class="btn btn-warning w-100"><i class="bi bi-upload me-1"></i>Uploader</button>
-        </div>
-      </form>
-    </div>
   </div>
 
   {% if group_files %}
   <div class="table-responsive">
-    <table class="table table-hover mb-0">
-      <thead class="table-light">
+    <table class="table table-hover align-middle mb-0 small">
+      <thead class="table-light text-uppercase" style="font-size:.75rem; letter-spacing:.04em;">
         <tr>
           <th><i class="bi bi-file-earmark-pdf text-danger me-1"></i>Nom</th>
           <th>Ajouté par</th>
-          <th>Date</th>
-          <th></th>
+          <th style="width:110px;">Date</th>
+          <th style="width:90px;"></th>
         </tr>
       </thead>
       <tbody>
         {% for gf in group_files %}
         <tr>
           <td class="fw-semibold">{{ gf.name }}</td>
-          <td class="text-muted small">{{ gf.uploaded_by.user.get_full_name|default:"—" }}</td>
-          <td class="text-muted small">{{ gf.uploaded_at|date:"d/m/Y" }}</td>
-          <td class="text-end">
+          <td class="text-muted">{{ gf.uploaded_by.user.get_full_name|default:"—" }}</td>
+          <td class="text-muted">{{ gf.uploaded_at|date:"d/m/Y" }}</td>
+          <td>
             <div class="d-flex gap-1 justify-content-end">
               <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal"
-                      data-bs-target="#renameModal{{ gf.pk }}">
+                      data-bs-target="#renameModal{{ gf.pk }}" title="Renommer">
                 <i class="bi bi-pencil"></i>
               </button>
               <form method="post" action="{% url 'courses:group_file_delete' pk=group.pk file_pk=gf.pk %}"
                     onsubmit="return confirm('Supprimer &laquo; {{ gf.name }} &raquo; ?')">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash3"></i></button>
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash3"></i></button>
               </form>
             </div>
           </td>
@@ -92,6 +230,41 @@
   {% endif %}
 </div>
 
+<!-- Bouton + formulaire upload fichier -->
+<div class="mt-1 mb-5">
+  <!-- Input fichier caché — déclenché par le bouton -->
+  <form method="post" action="{% url 'courses:group_file_upload' pk=group.pk %}" enctype="multipart/form-data" id="uploadFileForm">
+    {% csrf_token %}
+    <input type="file" id="hiddenFileInput" name="file" accept=".pdf" style="display:none;">
+
+    <!-- Bouton visible -->
+    <button type="button" class="btn btn-sm btn-outline-warning" id="triggerFileInput">
+      <i class="bi bi-upload me-1"></i>Ajouter un fichier
+    </button>
+
+    <!-- Panel de confirmation — affiché après sélection du fichier -->
+    <div id="uploadConfirmPanel" class="mt-2 p-3 border rounded bg-light" style="display:none; max-width:500px;">
+      <p class="mb-2 small text-muted">
+        <i class="bi bi-file-earmark-pdf text-danger me-1"></i>
+        <strong id="selectedFileName"></strong>
+      </p>
+      <div class="mb-2">
+        <input type="text" name="name" id="fileNameInput" class="form-control form-control-sm"
+               placeholder="Nom du fichier (ex: Support cours 1)" required>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-sm btn-warning">
+          <i class="bi bi-cloud-upload me-1"></i>Uploader
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="cancelUpload">
+          <i class="bi bi-x me-1"></i>Annuler
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Modals renommer -->
 {% for gf in group_files %}
 <div class="modal fade" id="renameModal{{ gf.pk }}" tabindex="-1">
   <div class="modal-dialog modal-sm">
@@ -115,190 +288,59 @@
 </div>
 {% endfor %}
 
-<!-- Membres -->
-<div class="card mb-4">
-  <div class="card-header d-flex align-items-center gap-2">
-    <i class="bi bi-person-lines-fill text-primary"></i>
-    <strong>Membres ({{ members|length }})</strong>
-    <button class="btn btn-sm btn-outline-primary ms-auto" type="button"
-            data-bs-toggle="collapse" data-bs-target="#addMemberForm">
-      <i class="bi bi-person-plus me-1"></i>Ajouter un membre
-    </button>
-  </div>
-
-  <!-- Formulaire ajout membre -->
-  <div class="collapse" id="addMemberForm">
-    <div class="card-body border-bottom bg-light">
-      <form method="post" action="{% url 'courses:group_add_member' pk=group.pk %}" class="d-flex gap-2 align-items-end flex-wrap">
-        {% csrf_token %}
-        <div class="flex-grow-1" style="min-width:260px; position:relative;">
-          <label class="form-label mb-1 fw-semibold small">Email du membre</label>
-          <input type="email" name="email" id="memberEmailInput"
-                 class="form-control" placeholder="prenom.nom@entreprise.fr"
-                 autocomplete="off" required>
-          <ul id="memberSuggestions"
-              class="list-group position-absolute w-100 shadow-sm"
-              style="z-index:1050; top:100%; display:none;"></ul>
-        </div>
-        <button type="submit" class="btn btn-primary">
-          <i class="bi bi-plus-circle me-1"></i>Ajouter
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <div class="table-responsive">
-    <table class="table table-hover mb-0">
-      <thead class="table-light">
-        <tr>
-          <th>Nom</th>
-          <th>Prénom</th>
-          <th>Email</th>
-          <th class="text-center">Participations</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for membership in members %}
-        {% with p=membership.person %}
-        <tr>
-          <td>{{ p.user.last_name|upper }}</td>
-          <td>{{ p.user.first_name }}</td>
-          <td><a href="mailto:{{ p.user.email }}">{{ p.user.email }}</a></td>
-          <td class="text-center">
-            {% with nb=p.participations.count %}
-              {% if nb %}<span class="badge bg-success">{{ nb }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
-            {% endwith %}
-          </td>
-          <td class="text-end">
-            {% if p != group.responsible %}
-            <form method="post" action="{% url 'courses:group_remove_member' pk=group.pk person_pk=p.pk %}"
-                  onsubmit="return confirm('Retirer {{ p.user.get_full_name }} du groupe ?')">
-              {% csrf_token %}
-              <button type="submit" class="btn btn-sm btn-outline-danger">
-                <i class="bi bi-person-dash"></i>
-              </button>
-            </form>
-            {% else %}
-            <span class="badge bg-warning text-dark"><i class="bi bi-shield-fill me-1"></i>Responsable</span>
-            {% endif %}
-          </td>
-        </tr>
-        {% endwith %}
-        {% empty %}
-        <tr><td colspan="5" class="text-center text-muted py-3">Aucun membre dans ce groupe.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<!-- Cours du groupe -->
-<div class="card">
-  <div class="card-header d-flex align-items-center gap-2">
-    <i class="bi bi-journal-richtext text-success"></i>
-    <strong>Cours du groupe ({{ courses|length }})</strong>
-    <a href="{% url 'courses:course_create_wizard' pk=group.pk %}" class="btn btn-sm btn-success ms-auto">
-      <i class="bi bi-plus-circle me-1"></i>Créer un cours
-    </a>
-  </div>
-  {% if courses %}
-  <div class="accordion accordion-flush" id="coursesAccordion">
-    {% for course in courses %}
-    <div class="accordion-item">
-      <h2 class="accordion-header">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                data-bs-target="#course{{ course.pk }}">
-          <span class="me-2">
-            {% if course.is_published %}
-              <i class="bi bi-check-circle-fill text-success"></i>
-            {% else %}
-              <i class="bi bi-hourglass-split text-warning"></i>
-            {% endif %}
-          </span>
-          {{ course.title }}
-          <span class="ms-2 badge bg-secondary">{{ course.nb_slides }} slides</span>
-          <span class="ms-1 badge bg-secondary">{{ course.nb_questions }} questions</span>
-        </button>
-      </h2>
-      <div id="course{{ course.pk }}" class="accordion-collapse collapse">
-        <div class="accordion-body">
-          <div class="d-flex gap-2 mb-3 flex-wrap">
-            <a href="{% url 'courses:course_detail' pk=course.pk %}" class="btn btn-sm btn-outline-primary">
-              <i class="bi bi-eye me-1"></i>Aperçu
-            </a>
-            <a href="{% url 'courses:review_slides' pk=course.pk %}" class="btn btn-sm btn-outline-secondary">
-              <i class="bi bi-pencil-square me-1"></i>Éditer
-            </a>
-            <form method="post" action="{% url 'courses:course_publish' pk=course.pk %}" class="d-inline">
-              {% csrf_token %}
-              {% if course.is_published %}
-              <button type="submit" class="btn btn-sm btn-warning">
-                <i class="bi bi-eye-slash me-1"></i>Dépublier
-              </button>
-              {% else %}
-              <button type="submit" class="btn btn-sm btn-success">
-                <i class="bi bi-rocket-takeoff me-1"></i>Publier
-              </button>
-              {% endif %}
-            </form>
-            <a href="{% url 'courses:course_delete' pk=course.pk %}" class="btn btn-sm btn-outline-danger ms-auto">
-              <i class="bi bi-trash3 me-1"></i>Supprimer
-            </a>
-          </div>
-
-          <!-- Participations -->
-          {% with parts=participations_by_course|get_item:course.pk %}
-          {% if parts %}
-          <h6 class="mb-2"><i class="bi bi-bar-chart me-1"></i>Participations</h6>
-          <table class="table table-sm table-hover">
-            <thead class="table-light">
-              <tr>
-                <th>Nom</th>
-                <th class="text-center">Score</th>
-                <th>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for part in parts %}
-              <tr>
-                <td>{{ part.person.user.get_full_name }}</td>
-                <td class="text-center">
-                  {% if part.score is not None %}
-                    <span class="badge {% if part.score >= 80 %}bg-success{% elif part.score >= 50 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
-                      {{ part.score|floatformat:0 }}%
-                    </span>
-                  {% else %}—{% endif %}
-                </td>
-                <td>{{ part.completed_at|date:"d/m/Y H:i"|default:"—" }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-          {% else %}
-          <p class="text-muted mb-0 small"><i class="bi bi-info-circle me-1"></i>Aucune participation pour ce cours.</p>
-          {% endif %}
-          {% endwith %}
-        </div>
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-  {% else %}
-  <div class="card-body text-muted">
-    <i class="bi bi-info-circle me-1"></i>Aucun cours créé pour ce groupe.
-  </div>
-  {% endif %}
-</div>
 {% endblock %}
 
 {% block extra_js %}
+<style>
+.btn-action-trigger {
+  border: 1px solid #6c757d;
+  color: #6c757d;
+  background: transparent;
+  font-weight: 500;
+}
+.btn-action-trigger:hover,
+.btn-action-trigger:focus {
+  background: #6c757d;
+  border-color: #6c757d;
+  color: #fff;
+}
+</style>
 <script>
+// ── Upload fichier : ouvre le navigateur natif ──────────────────────────────
+(function () {
+  const triggerBtn     = document.getElementById('triggerFileInput');
+  const hiddenInput    = document.getElementById('hiddenFileInput');
+  const confirmPanel   = document.getElementById('uploadConfirmPanel');
+  const selectedName   = document.getElementById('selectedFileName');
+  const fileNameInput  = document.getElementById('fileNameInput');
+  const cancelBtn      = document.getElementById('cancelUpload');
+
+  if (!triggerBtn) return;
+
+  triggerBtn.addEventListener('click', () => hiddenInput.click());
+
+  hiddenInput.addEventListener('change', function () {
+    if (!this.files.length) return;
+    const file = this.files[0];
+    selectedName.textContent = file.name;
+    // Pré-remplir le nom sans l'extension
+    fileNameInput.value = file.name.replace(/\.pdf$/i, '');
+    confirmPanel.style.display = 'block';
+    fileNameInput.focus();
+  });
+
+  cancelBtn.addEventListener('click', () => {
+    hiddenInput.value = '';
+    fileNameInput.value = '';
+    confirmPanel.style.display = 'none';
+  });
+})();
+
+// ── Autocomplete membres ─────────────────────────────────────────────────────
 (function () {
   const input = document.getElementById('memberEmailInput');
   const list  = document.getElementById('memberSuggestions');
   if (!input) return;
-
   let timer;
   input.addEventListener('input', function () {
     clearTimeout(timer);
@@ -326,7 +368,6 @@
         });
     }, 250);
   });
-
   document.addEventListener('click', (e) => {
     if (!input.contains(e.target)) list.style.display = 'none';
   });

@@ -8,19 +8,13 @@ from .models import Participation
 
 @login_and_person_required
 def take_quiz(request, course_pk):
-    """Affiche les questions du quiz et traite la soumission."""
+    """Affiche les questions du quiz et traite la soumission. Chaque tentative crée une nouvelle Participation."""
     course = get_object_or_404(Course, pk=course_pk, is_published=True)
     person = request.user.person
-
-    # Vérifie si déjà participé
-    existing = Participation.objects.filter(person=person, course=course).first()
-    if existing and existing.score is not None:
-        return redirect('participations:result_detail', pk=existing.pk)
-
     questions = list(course.questions.order_by('order'))
 
     if request.method == 'POST':
-        answers = {}   # {question_pk: lettre_choisie}
+        answers = {}
         correct = 0
         for q in questions:
             answer = request.POST.get(f'q{q.pk}')
@@ -29,13 +23,14 @@ def take_quiz(request, course_pk):
                 correct += 1
 
         score = (correct / len(questions) * 100) if questions else 0
-        participation, _ = Participation.objects.get_or_create(person=person, course=course)
-        participation.score = round(score, 1)
-        participation.completed_at = timezone.now()
-        # Stocke les réponses en JSON dans le champ answers
         import json
-        participation.answers = json.dumps(answers)
-        participation.save()
+        participation = Participation.objects.create(
+            person=person,
+            course=course,
+            score=round(score, 1),
+            completed_at=timezone.now(),
+            answers=json.dumps(answers),
+        )
         return redirect('participations:result_detail', pk=participation.pk)
 
     return render(request, 'participations/quiz.html', {
@@ -86,9 +81,20 @@ def result_detail(request, pk):
 def my_history(request):
     """Historique complet des participations de la personne connectée."""
     person = request.user.person
-    participations = Participation.objects.filter(
+    participations = list(Participation.objects.filter(
         person=person, score__isnull=False
-    ).select_related('course__group').order_by('-completed_at')
+    ).select_related('course__group').order_by('course_id', 'completed_at'))
+
+    # Numérotation des tentatives par cours
+    from collections import defaultdict
+    counters = defaultdict(int)
+    for p in participations:
+        counters[p.course_id] += 1
+        p.attempt_number = counters[p.course_id]
+
+    # Tri final par date décroissante pour l'affichage
+    participations.sort(key=lambda p: p.completed_at or p.pk, reverse=True)
+
     return render(request, 'participations/my_history.html', {'participations': participations})
 
 

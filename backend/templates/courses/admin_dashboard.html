@@ -57,9 +57,6 @@
 
 <!-- Actions rapides -->
 <div class="d-flex gap-2 mb-4">
-  <a href="{% url 'courses:upload_pdf' %}" class="btn btn-success">
-    <i class="bi bi-file-earmark-arrow-up me-1"></i>Upload PDF + IA
-  </a>
   <a href="{% url 'accounts:person_create' %}" class="btn btn-outline-primary">
     <i class="bi bi-person-plus me-1"></i>Ajouter une personne
   </a>
@@ -103,7 +100,6 @@
           </td>
           <td>
             <a href="{% url 'courses:course_detail' course.pk %}" class="btn btn-sm btn-outline-secondary">Voir</a>
-            <a href="{% url 'courses:upload_pdf' %}?course_id={{ course.pk }}" class="btn btn-sm btn-outline-success" title="Régénérer avec un nouveau PDF"><i class="bi bi-arrow-repeat"></i></a>
           </td>
         </tr>
         {% empty %}
