@@ -43,24 +43,22 @@ Dans le cadre du cours **Systèmes de Gestion des Connaissances** (M2 MIAGE), no
 
 ```
 LLM         : OpenAI GPT-4o (API)
-Embeddings  : OpenAI text-embedding-3-small (pour RAG chatbot - phase bonus)
+Embeddings  : OpenAI text-embedding-3-small (RAG chatbot - phase bonus)
 Backend     : Python 3.11 + Django (auth + ORM + admin intégrés)
 Frontend    : Django Templates (HTML/Jinja2, sans CSS élaboré, tables simples)
-BDD         : PostgreSQL sur AWS RDS (db.t3.micro - free tier)
-              + extension pgvector (stockage vecteurs pour RAG - activée dès le début)
+BDD         : Railway PostgreSQL + extension pgvector (activée dès le début)
 PDF parsing : PyMuPDF (fitz)
 Fichiers    : AWS S3 (stockage persistant des PDFs uploadés)
-Déploiement : AWS EC2 (t2.micro - free tier) + Gunicorn + Nginx
-URL         : URL publique AWS (ex: http://ec2-xx-xx.compute.amazonaws.com)
+Déploiement : Railway (déploiement automatique depuis GitHub, zéro config serveur)
+URL         : https://xxx.railway.app (URL publique automatique)
+Compétement : django-storages + boto3 pour S3 | psycopg2 + django-pgvector
 ```
 
-> **Pourquoi pgvector et pas ChromaDB ?** pgvector est une **extension PostgreSQL** : pas de service supplémentaire à héberger. Les vecteurs sont stockés directement dans la base RDS existante. ChromaDB nécessiterait un serveur séparé sur EC2.
+> **Pourquoi Railway et pas AWS EC2 ?** Railway détecte Django automatiquement, gère Gunicorn/Nginx en interne, déploie à chaque `git push`. La Phase 8 passe de ~6h à ~1h. PostgreSQL avec pgvector est inclus en 1 clic.
 
-> **Pourquoi Django ?** Auth, panneau admin, ORM et gestion des sessions sont inclus nativement. Un seul projet à gérer.
+> **Pourquoi garder AWS S3 ?** Railway ne stocke pas les fichiers de façon persistante. S3 est la seule solution fiable pour conserver les PDFs uploadés durablement, quel que soit l'hébergeur applicatif.
 
-> **Pourquoi RDS et pas SQLite ?** SQLite est un fichier stocké sur le disque de l'instance EC2. Si l'instance est arrêtée, recréée ou crashe → **toutes les données sont perdues**. RDS est un service de base de données indépendant de l'instance EC2 : les données survivent à tout redémarrage ou recréation du serveur.
-
-> **Pourquoi S3 et pas fichiers locaux ?** Les fichiers stockés localement sur EC2 disparaissent avec l'instance. S3 est un stockage objet **permanent et indépendant** du serveur : les PDFs uploadés sont conservés même si l'instance EC2 est recréée.
+> **Pourquoi pgvector et pas ChromaDB ?** pgvector est une extension PostgreSQL : zéro service supplémentaire. Les vecteurs du chatbot sont dans la même base que le reste des données.
 
 ### 3.3 Pattern IA utilisé
 **✅ Deux patterns selon la fonctionnalité :**
@@ -380,21 +378,19 @@ L'inverse **n'est pas vrai** : un membre d'un groupe parent ne voit **pas** les 
 
 ---
 
-### ☁️ PHASE 8 — Déploiement AWS *(~6h)*
-> L'application tourne en ligne avec une URL publique
+### ☁️ PHASE 8 — Déploiement Railway + AWS S3 *(∼1h30)*
+> L’application tourne en ligne avec une URL publique, zéro config serveur
 
 | Étape | Détail | Temps |
 |-------|--------|-------|
-| 8.1 | Créer instance **EC2 t2.micro** Ubuntu + configurer Security Group (ports 22, 80) | 30 min |
-| 8.2 | Créer base **RDS PostgreSQL** + activer extension `pgvector` | 30 min |
-| 8.3 | Créer **bucket S3** + configurer les permissions IAM | 20 min |
-| 8.4 | SSH sur EC2 : installer Python, pip, virtualenv, Nginx, Gunicorn | 30 min |
-| 8.5 | Cloner le repo + configurer `.env` (clés OpenAI, AWS, DB) | 20 min |
-| 8.6 | Adapter `settings.py` pour PostgreSQL + S3 en production | 30 min |
-| 8.7 | `migrate` + `collectstatic` + créer superuser en prod | 15 min |
-| 8.8 | Configurer **Gunicorn** comme service systemd | 30 min |
-| 8.9 | Configurer **Nginx** comme reverse proxy | 30 min |
-| 8.10 | Tests complets sur l'URL publique + debug | 45 min |
+| 8.1 | Créer compte **Railway** → connecter le repo GitHub | 10 min |
+| 8.2 | Ajouter un service **PostgreSQL** sur Railway → activer l'extension `pgvector` | 15 min |
+| 8.3 | Créer compte **AWS** → créer bucket **S3** + utilisateur IAM avec Access Key | 20 min |
+| 8.4 | Ajouter les variables d'environnement sur Railway (voir liste ci-dessous) | 10 min |
+| 8.5 | Adapter `settings.py` : `DATABASE_URL`, `STORAGES` S3, `ALLOWED_HOSTS` | 20 min |
+| 8.6 | Ajouter `railway.toml` + `Procfile` au repo | 10 min |
+| 8.7 | `git push` → Railway déploie automatiquement → `railway run python manage.py migrate` | 10 min |
+| 8.8 | Tests complets sur l'URL publique + debug | 25 min |
 
 ---
 
@@ -436,81 +432,73 @@ L'inverse **n'est pas vrai** : un membre d'un groupe parent ne voit **pas** les 
 | 5 | Génération IA (PDF → cours) | ~4h |
 | 6 | Flow création cours | ~4h |
 | 7 | Flow participation | ~3h |
-| 8 | Déploiement AWS | ~6h |
+| 8 | Déploiement Railway + AWS S3 | ~1h30 |
 | 9 | **[BONUS]** Chatbot RAG | ~8h |
 | 10 | Bilan & soutenance | ~5h |
-| **TOTAL sans bonus** | | **~35h** |
-| **TOTAL avec bonus** | | **~43h** |
+| **TOTAL sans bonus** | | **~30h** |
+| **TOTAL avec bonus** | | **~38h** |
 
 ---
 
 ---
 
-## 10. Architecture de déploiement AWS ✅
+## 10. Architecture de déploiement ✅
 
 ### Infrastructure cible
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                      AWS Cloud                       │
-│                                                     │
-│   ┌──────────────┐        ┌───────────────────┐    │
-│   │  EC2 t2.micro │        │   RDS PostgreSQL   │    │
-│   │  (free tier)  │◄──────►│   (free tier)     │    │
-│   │               │        └───────────────────┘    │
-│   │  Nginx        │                                  │
-│   │  Gunicorn     │        ┌───────────────────┐    │
-│   │  Django app   │◄──────►│   S3 Bucket       │    │
-│   └──────────────┘        │  (PDFs uploadés)  │    │
-│          │                 └───────────────────┘    │
-│          │ URL publique                              │
-└──────────┼──────────────────────────────────────────┘
+┌────────────────────────────────────────────────┐
+│              Railway                            │
+│                                                │
+│   ┌──────────────┐   ┌────────────────────┐  │
+│   │ Django App    │   │ PostgreSQL          │  │
+│   │ (auto-deploy) │◄─►│ + pgvector          │  │
+│   └──────────────┘   └────────────────────┘  │
+│          │                                    │
+│   https://xxx.railway.app                      │
+└──────────┼───────────────────────────────────┘
            │
-     http://ec2-xx-xx-xx-xx.compute.amazonaws.com
+           │ uploads/téléchargement PDFs
+           │
+┌──────────┴───────────────────────────────────┐
+│              AWS S3                            │
+│   Bucket : doculearn-uploads                   │
+│   (PDFs stockés de façon permanente)            │
+└────────────────────────────────────────────────┐
 ```
 
-### Services AWS utilisés
+### Services utilisés
 
-| Service | Usage | Coût estimé |
-|---------|-------|-------------|
-| **EC2 t2.micro** | Serveur applicatif Django + Gunicorn + Nginx | Gratuit (free tier 12 mois) |
-| **RDS PostgreSQL** (db.t3.micro) | Base de données | Gratuit (free tier 12 mois) |
-| **S3** | Stockage des PDFs uploadés + fichiers statiques | ~$0 pour un POC |
-| **Security Groups** | Firewall : ports 80 (HTTP) et 22 (SSH) ouverts | Gratuit |
+| Service | Usage | Coût |
+|---------|-------|------|
+| **Railway** (app Django) | Hébergement applicatif, déploiement auto depuis GitHub | ~$5/mois |
+| **Railway PostgreSQL** | Base de données + pgvector pour RAG | Inclus dans Railway |
+| **AWS S3** | Stockage persistant des PDFs uploadés | ~$0 pour un POC |
+| **Total** | | **~$5/mois** |
 
-### Stack serveur sur EC2
-```
-OS          : Ubuntu 22.04 LTS
-Serveur web : Nginx (reverse proxy)
-WSGI        : Gunicorn
-App         : Django
-Process mgr : systemd (ou supervisor)
-Env vars    : fichier .env sur le serveur (clé OpenAI, DB password...)
-```
-
-### Variables d'environnement à configurer
+### Variables d’environnement Railway
 ```bash
 DJANGO_SECRET_KEY=...
 DJANGO_DEBUG=False
-DJANGO_ALLOWED_HOSTS=ec2-xx-xx-xx-xx.compute.amazonaws.com
-DATABASE_URL=postgres://user:password@rds-endpoint:5432/doculearn
-OPENAI_API_KEY=sk-...
+ALLOWED_HOSTS=xxx.railway.app
+DATABASE_URL=postgresql://...  # injecté automatiquement par Railway
+OPENAI_API_KEY=sk-...          # ⚠️ ne jamais commiter dans git
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 AWS_S3_BUCKET_NAME=doculearn-uploads
+AWS_S3_REGION=eu-west-3
 ```
 
-### Étapes de déploiement (résumé)
-1. Créer une instance EC2 t2.micro (Ubuntu)
-2. Créer une base RDS PostgreSQL (free tier)
-3. Créer un bucket S3 pour les uploads
-4. Installer Python, Nginx, Gunicorn sur EC2
-5. Cloner le repo git sur EC2
-6. Configurer le `.env` avec les variables
-7. `python manage.py migrate` + `collectstatic`
-8. Configurer Gunicorn comme service systemd
-9. Configurer Nginx comme reverse proxy
-10. Ouvrir le port 80 dans le Security Group
+### Fichiers Railway à ajouter au repo
+```toml
+# railway.toml
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "gunicorn config.wsgi:application --bind 0.0.0.0:$PORT"
+healthcheckPath = "/"
+```
 
 ---
 
