@@ -16,5 +16,9 @@ urlpatterns = [
     path('groupe/<int:pk>/responsable/', views.responsible_group_detail, name='responsible_group'),
     path('groupe/<int:pk>/ajouter-membre/', views.group_add_member, name='group_add_member'),
     path('groupe/<int:pk>/retirer-membre/<int:person_pk>/', views.group_remove_member, name='group_remove_member'),
+    path('groupe/<int:pk>/fichiers/upload/', views.group_file_upload, name='group_file_upload'),
+    path('groupe/<int:pk>/fichiers/<int:file_pk>/renommer/', views.group_file_rename, name='group_file_rename'),
+    path('groupe/<int:pk>/fichiers/<int:file_pk>/supprimer/', views.group_file_delete, name='group_file_delete'),
+    path('groupe/<int:pk>/cours/creer/', views.course_create_wizard, name='course_create_wizard'),
     path('membres/autocomplete/', views.member_autocomplete, name='member_autocomplete'),
 ]

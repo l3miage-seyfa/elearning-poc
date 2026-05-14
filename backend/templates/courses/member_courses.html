@@ -30,10 +30,8 @@
           <a href="{% url 'participations:slide_reader' course.pk %}" class="btn btn-sm btn-outline-primary">
             <i class="bi bi-play-circle me-1"></i>Lire
           </a>
-          {% if course.pk not in participated_ids %}
-            <a href="{% url 'participations:take_quiz' course.pk %}" class="btn btn-sm btn-success">
-              <i class="bi bi-patch-question me-1"></i>Quiz
-            </a>
+          {% if False %}
+            {# Quiz accessible uniquement depuis la dernière slide du lecteur #}
           {% else %}
             <a href="{% url 'participations:result_detail' pk=participated_pks|get_item:course.pk %}" class="btn btn-sm btn-secondary">
               <i class="bi bi-check-circle me-1"></i>Résultats

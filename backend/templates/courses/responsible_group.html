@@ -8,14 +8,6 @@
     <h1 class="h3 mb-0">{{ group.name }}</h1>
     <small class="text-muted">{{ group.get_type_display }} — vue responsable</small>
   </div>
-  <div class="ms-auto">
-    <a href="{% url 'courses:upload_pdf' %}?group_id={{ group.pk }}" class="btn btn-primary">
-      <i class="bi bi-upload me-1"></i>Uploader un PDF
-    </a>
-    <a href="{% url 'courses:course_create' %}?group_id={{ group.pk }}" class="btn btn-outline-primary">
-      <i class="bi bi-plus-circle me-1"></i>Créer manuellement
-    </a>
-  </div>
 </div>
 {% if group.description %}<p class="text-muted mb-3">{{ group.description }}</p>{% endif %}
 
@@ -26,6 +18,102 @@
     </div>
   {% endfor %}
 {% endif %}
+
+<!-- Fichiers du groupe -->
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-folder2-open text-warning"></i>
+    <strong>Fichiers du groupe ({{ group_files|length }})</strong>
+    <button class="btn btn-sm btn-outline-warning ms-auto" type="button"
+            data-bs-toggle="collapse" data-bs-target="#uploadFileForm">
+      <i class="bi bi-upload me-1"></i>Ajouter un fichier
+    </button>
+  </div>
+
+  <div class="collapse" id="uploadFileForm">
+    <div class="card-body border-bottom bg-light">
+      <form method="post" action="{% url 'courses:group_file_upload' pk=group.pk %}" enctype="multipart/form-data"
+            class="row g-2 align-items-end">
+        {% csrf_token %}
+        <div class="col-md-5">
+          <label class="form-label mb-1 fw-semibold small">Nom</label>
+          <input type="text" name="name" class="form-control" placeholder="Ex : Support RGPD 2026" required>
+        </div>
+        <div class="col-md-5">
+          <label class="form-label mb-1 fw-semibold small">Fichier PDF</label>
+          <input type="file" name="file" class="form-control" accept=".pdf" required>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-warning w-100"><i class="bi bi-upload me-1"></i>Uploader</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if group_files %}
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead class="table-light">
+        <tr>
+          <th><i class="bi bi-file-earmark-pdf text-danger me-1"></i>Nom</th>
+          <th>Ajouté par</th>
+          <th>Date</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for gf in group_files %}
+        <tr>
+          <td class="fw-semibold">{{ gf.name }}</td>
+          <td class="text-muted small">{{ gf.uploaded_by.user.get_full_name|default:"—" }}</td>
+          <td class="text-muted small">{{ gf.uploaded_at|date:"d/m/Y" }}</td>
+          <td class="text-end">
+            <div class="d-flex gap-1 justify-content-end">
+              <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal"
+                      data-bs-target="#renameModal{{ gf.pk }}">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <form method="post" action="{% url 'courses:group_file_delete' pk=group.pk file_pk=gf.pk %}"
+                    onsubmit="return confirm('Supprimer &laquo; {{ gf.name }} &raquo; ?')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash3"></i></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body text-muted small">
+    <i class="bi bi-info-circle me-1"></i>Aucun fichier. Uploadez un PDF pour pouvoir créer des cours.
+  </div>
+  {% endif %}
+</div>
+
+{% for gf in group_files %}
+<div class="modal fade" id="renameModal{{ gf.pk }}" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <form method="post" action="{% url 'courses:group_file_rename' pk=group.pk file_pk=gf.pk %}">
+        {% csrf_token %}
+        <div class="modal-header py-2">
+          <h6 class="modal-title">Renommer</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="text" name="name" class="form-control" value="{{ gf.name }}" required>
+        </div>
+        <div class="modal-footer py-2">
+          <button type="submit" class="btn btn-primary btn-sm">Renommer</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
 
 <!-- Membres -->
 <div class="card mb-4">
@@ -110,6 +198,9 @@
   <div class="card-header d-flex align-items-center gap-2">
     <i class="bi bi-journal-richtext text-success"></i>
     <strong>Cours du groupe ({{ courses|length }})</strong>
+    <a href="{% url 'courses:course_create_wizard' pk=group.pk %}" class="btn btn-sm btn-success ms-auto">
+      <i class="bi bi-plus-circle me-1"></i>Créer un cours
+    </a>
   </div>
   {% if courses %}
   <div class="accordion accordion-flush" id="coursesAccordion">

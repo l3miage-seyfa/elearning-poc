@@ -233,8 +233,8 @@ def course_detail(request, pk):
 
 @responsible_required
 def responsible_group_detail(request, pk):
-    """Page groupe du responsable : membres, participations, cours du groupe."""
-    from groups.models import GroupMembership
+    """Page groupe du responsable : membres, fichiers, participations, cours du groupe."""
+    from groups.models import GroupMembership, GroupFile
     from participations.models import Participation
     person = request.user.person
     group = get_object_or_404(Group, pk=pk)
@@ -253,11 +253,183 @@ def responsible_group_detail(request, pk):
             course=course
         ).select_related('person__user').order_by('-completed_at')
 
+    group_files = group.files.select_related('uploaded_by__user').order_by('-uploaded_at')
+
     return render(request, 'courses/responsible_group.html', {
         'group': group,
         'members': members,
         'courses': courses,
         'participations_by_course': participations_by_course,
+        'group_files': group_files,
+    })
+
+
+# ─── Gestion des fichiers du groupe ────────────────────────────────────────────
+
+@responsible_required
+def group_file_upload(request, pk):
+    """Upload un fichier dans le groupe."""
+    from groups.models import GroupFile
+    group = get_object_or_404(Group, pk=pk)
+    person = request.user.person
+    if not person.is_admin and group.responsible != person:
+        from django.http import Http404
+        raise Http404
+
+    if request.method == 'POST':
+        uploaded = request.FILES.get('file')
+        name = request.POST.get('name', '').strip()
+        if not uploaded:
+            messages.error(request, "Veuillez sélectionner un fichier.")
+        elif not name:
+            messages.error(request, "Veuillez donner un nom au fichier.")
+        else:
+            GroupFile.objects.create(group=group, name=name, file=uploaded, uploaded_by=person)
+            messages.success(request, f"Fichier « {name} » ajouté.")
+    return redirect('courses:responsible_group', pk=pk)
+
+
+@responsible_required
+def group_file_rename(request, pk, file_pk):
+    """Renomme un fichier du groupe."""
+    from groups.models import GroupFile
+    group = get_object_or_404(Group, pk=pk)
+    person = request.user.person
+    if not person.is_admin and group.responsible != person:
+        from django.http import Http404
+        raise Http404
+
+    gf = get_object_or_404(GroupFile, pk=file_pk, group=group)
+    if request.method == 'POST':
+        new_name = request.POST.get('name', '').strip()
+        if new_name:
+            gf.name = new_name
+            gf.save()
+            messages.success(request, f"Fichier renommé en « {new_name} ».")
+        else:
+            messages.error(request, "Le nom ne peut pas être vide.")
+    return redirect('courses:responsible_group', pk=pk)
+
+
+@responsible_required
+def group_file_delete(request, pk, file_pk):
+    """Supprime un fichier du groupe."""
+    from groups.models import GroupFile
+    group = get_object_or_404(Group, pk=pk)
+    person = request.user.person
+    if not person.is_admin and group.responsible != person:
+        from django.http import Http404
+        raise Http404
+
+    gf = get_object_or_404(GroupFile, pk=file_pk, group=group)
+    if request.method == 'POST':
+        name = gf.name
+        gf.file.delete(save=False)
+        gf.delete()
+        messages.success(request, f"Fichier « {name} » supprimé.")
+    return redirect('courses:responsible_group', pk=pk)
+
+
+# ─── Wizard création de cours depuis un fichier ────────────────────────────────
+
+@responsible_required
+def course_create_wizard(request, pk):
+    """
+    Wizard création de cours pour un groupe.
+    Étape unique : choisir un fichier existant OU uploader un nouveau,
+    saisir titre/nb_slides/nb_questions, puis générer avec GPT-4o.
+    """
+    from groups.models import GroupFile
+    group = get_object_or_404(Group, pk=pk)
+    person = request.user.person
+    if not person.is_admin and group.responsible != person:
+        from django.http import Http404
+        raise Http404
+
+    group_files = group.files.order_by('-uploaded_at')
+
+    if request.method == 'POST':
+        title       = request.POST.get('title', '').strip()
+        nb_slides   = int(request.POST.get('nb_slides', 5))
+        nb_questions = int(request.POST.get('nb_questions', 5))
+        file_source = request.POST.get('file_source', 'existing')  # 'existing' ou 'new'
+
+        pdf_bytes = None
+        file_name = ''
+
+        if file_source == 'new':
+            uploaded = request.FILES.get('new_file')
+            file_name_input = request.POST.get('new_file_name', '').strip()
+            if not uploaded:
+                messages.error(request, "Veuillez sélectionner un fichier.")
+                return render(request, 'courses/course_create_wizard.html', {
+                    'group': group, 'group_files': group_files
+                })
+            if not file_name_input:
+                file_name_input = uploaded.name
+            # Sauvegarde dans les fichiers du groupe
+            gf = GroupFile.objects.create(
+                group=group, name=file_name_input,
+                file=uploaded, uploaded_by=person
+            )
+            gf.file.seek(0)
+            pdf_bytes = gf.file.read()
+            file_name = file_name_input
+        else:
+            file_id = request.POST.get('file_id')
+            if not file_id:
+                messages.error(request, "Veuillez choisir un fichier.")
+                return render(request, 'courses/course_create_wizard.html', {
+                    'group': group, 'group_files': group_files
+                })
+            gf = get_object_or_404(GroupFile, pk=file_id, group=group)
+            with gf.file.open('rb') as f:
+                pdf_bytes = f.read()
+            file_name = gf.name
+
+        if not title:
+            title = file_name
+
+        try:
+            pdf_text = extract_pdf_text(pdf_bytes)
+            if not pdf_text.strip():
+                messages.error(request, "Impossible d'extraire du texte de ce fichier (PDF scanné ?).")
+                return render(request, 'courses/course_create_wizard.html', {
+                    'group': group, 'group_files': group_files
+                })
+
+            slides_data    = generate_slides(pdf_text, nb_slides)
+            questions_data = generate_questions(pdf_text, nb_questions)
+
+            with transaction.atomic():
+                course = Course.objects.create(
+                    title=title, group=group, created_by=person,
+                    nb_slides=nb_slides, nb_questions=nb_questions,
+                    is_published=False,
+                )
+                Slide.objects.bulk_create([
+                    Slide(course=course, order=s.get('order', i+1), content=s.get('content', ''))
+                    for i, s in enumerate(slides_data)
+                ])
+                Question.objects.bulk_create([
+                    Question(
+                        course=course, order=q.get('order', i+1),
+                        text=q.get('text', ''), choice_a=q.get('choice_a', ''),
+                        choice_b=q.get('choice_b', ''), choice_c=q.get('choice_c', ''),
+                        choice_d=q.get('choice_d', ''), correct_answer=q.get('correct_answer', 'a'),
+                        explanation=q.get('explanation', ''),
+                    )
+                    for i, q in enumerate(questions_data)
+                ])
+
+            messages.success(request, f"Cours « {title} » généré avec {len(slides_data)} slides et {len(questions_data)} questions. Relisez avant de publier.")
+            return redirect('courses:review_slides', pk=course.pk)
+
+        except Exception as e:
+            messages.error(request, f"Erreur lors de la génération : {e}")
+
+    return render(request, 'courses/course_create_wizard.html', {
+        'group': group, 'group_files': group_files
     })
 
 

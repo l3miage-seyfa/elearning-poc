@@ -62,3 +62,22 @@ class GroupMembership(models.Model):
 
     def __str__(self):
         return f"{self.person} → {self.group}"
+
+
+class GroupFile(models.Model):
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='files', verbose_name="Groupe")
+    name = models.CharField(max_length=200, verbose_name="Nom")
+    file = models.FileField(upload_to='group_files/', verbose_name="Fichier")
+    uploaded_by = models.ForeignKey(
+        'accounts.Person', on_delete=models.SET_NULL, null=True,
+        related_name='uploaded_files', verbose_name="Uploadé par"
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.group.name})"
+
+    class Meta:
+        verbose_name = "Fichier du groupe"
+        verbose_name_plural = "Fichiers du groupe"
+        ordering = ['-uploaded_at']
