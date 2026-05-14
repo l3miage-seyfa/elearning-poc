@@ -1,0 +1,31 @@
+{% extends 'core/base.html' %}
+{% block title %}Dashboard Admin — eLearning POC{% endblock %}
+{% block content %}
+<h1>🛠️ Dashboard Administrateur</h1>
+<p style="color:#777; margin-bottom:24px;">Bienvenue, {{ user.first_name }}. Gérez les personnes et les groupes.</p>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="number">{{ nb_persons }}</div>
+        <div class="label">Personnes</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ nb_groups }}</div>
+        <div class="label">Groupes</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ nb_courses }}</div>
+        <div class="label">Cours publiés</div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Actions rapides</h2>
+    <p style="margin-top:12px;">
+        <a href="#" class="btn btn-primary">👤 Gérer les personnes</a>
+        &nbsp;
+        <a href="#" class="btn btn-primary">🏢 Gérer les groupes</a>
+    </p>
+    <p style="margin-top:12px; color:#aaa; font-size:13px;">(Liens actifs à partir de la Phase 3)</p>
+</div>
+{% endblock %}
