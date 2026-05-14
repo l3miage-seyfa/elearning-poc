@@ -19,9 +19,11 @@ from django.urls import path, include
 from django.shortcuts import redirect
 from django.conf import settings
 from django.conf.urls.static import static
+from accounts import views as account_views
 
 urlpatterns = [
     path('django-admin/', admin.site.urls),
+    path('login/', account_views.login_view, name='login'),
     path('', lambda request: redirect('courses:admin_dashboard') if request.user.is_authenticated and getattr(getattr(request.user, 'person', None), 'is_admin', False) else redirect('courses:member_courses'), name='home'),
     path('accounts/', include('accounts.urls')),
     path('groupes/', include('groups.urls')),
