@@ -79,7 +79,7 @@ capturée silencieusement — le cours est créé sans PDF stocké. Normal en de
 
 ### Phase 5 — Review avant publication
 **Question :** Inline dans une seule page ou page par slide ?  
-**Recommandation :** Page unique avec formulaire multi-champs (plus simple pour un POC).
+**Réponse retenue :** Page unique avec formulaire multi-champs.
 
 ### Phase 7 — Déploiement Railway
 **À faire avant le déploiement :**
@@ -87,3 +87,30 @@ capturée silencieusement — le cours est créé sans PDF stocké. Normal en de
 2. Ajouter `STATIC_ROOT` dans `settings.py`
 3. Vérifier `ALLOWED_HOSTS` = `['*.railway.app']`
 4. Activer l'extension pgvector sur Railway avant les migrations
+
+---
+
+## 14/05/2026 — Phases 3–6 + améliorations UX
+
+**Commits :** `70c36bc` → `165fe01`  
+**Ce qui a été fait :**
+- CRUD Personnes & Groupes avec vues Bootstrap
+- Interface responsable de groupe : membres, fichiers, participations, cours
+- Ajout/retrait membres via autocomplete email
+- Wizard création cours (PDF → IA → slides + questions)
+- Review slides/questions avant publication
+- Lecture slides avec navigation + barre de progression
+- **Rendu Markdown** des slides via `marked.js` (CDN) — h1–h4, listes, bold, code, blockquote, tableaux
+- **Mode aperçu responsable** : même vue `slide_reader` avec 3 contextes (`back=slides/group/admin`)
+- **Multi-tentatives** : suppression `unique_together` sur `Participation` + migration `0003`
+- Historique participations avec numéro de tentative + bouton Repasser
+- Description groupe éditable depuis la page responsable
+- Messages flash dédupliqués (un seul bloc dans `base.html`)
+- **56 tests structurés** dans `app/__tests__/` — 56/56 ✅
+- Nettoyage : templates/vues/routes morts supprimés
+- Prompt IA enrichi : Markdown structuré imposé (`##`, `###`, `**`, `- listes`)
+
+**Problèmes rencontrés :**
+- `escapejs` dans `data-raw` double-échappait les caractères (`\r\n` → `\u000D\u000A`) → fix : `json_script` + `JSON.parse()`
+- `slide_reader` faisait `get_object_or_404(is_published=True)` avant de lire `?preview=1` → fix : vérifier `preview` en premier
+- Messages affichés deux fois : bloc `messages` dans templates enfants + `base.html` → supprimé des enfants

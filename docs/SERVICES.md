@@ -27,16 +27,24 @@ Génère des slides pédagogiques depuis le texte d'un PDF via **GPT-4o**.
 **Retourne** :
 ```python
 [
-  {"order": 1, "content": "# Titre\n\n- Point 1\n- Point 2"},
-  {"order": 2, "content": "# ..."},
+  {"order": 1, "content": "## Titre\n\n- **Point clé** : définition\n- Item 2"},
+  {"order": 2, "content": "### Sous-section\n\n> Blockquote important"},
   ...
 ]
 ```
+
+**Format Markdown imposé au prompt :**
+- `##` titre principal, `###` sous-section
+- `**gras**` pour les notions clés
+- `- listes` à puces pour les points
+- `*italique*` pour les nuances
+- 5 à 10 lignes par slide, jamais de texte brut
 
 **Paramètres** :
 - `pdf_text` : texte brut du PDF (tronqué à 8 000 chars en interne)
 - `nb_slides` : nombre de slides souhaité (1–20)
 
+**Rendu côté frontend** : `marked.js` CDN via `json_script` + `JSON.parse()` (pas d'`escapejs`).  
 **Format GPT-4o** : `response_format={"type": "json_object"}` — garantit un JSON valide.  
 **Normalisation** : gère `{"slides": [...]}` ou `[...]` directement.
 

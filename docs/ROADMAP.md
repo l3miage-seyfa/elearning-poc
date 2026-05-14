@@ -69,29 +69,37 @@
 - [x] Ajout/retrait de membres via email avec autocomplete live
 - [x] Bouton "Gérer" dans "Mes groupes" → page responsable
 - [x] Boutons Publier/Dépublier/Supprimer cours inline
-- [x] **Commit** : `a764fa6`, `5e25ba2`
+- [x] Gestion fichiers groupe (upload, renommer, supprimer, télécharger)
+- [x] Modifier description du groupe depuis la page responsable
+- [x] **Commit** : `a764fa6`, `5e25ba2`, `a173c33`
 
 ---
 
 ## Phase 5 — Review & édition des slides/questions ✅
 
-- [x] Page **review slides** : édition textarea par slide
-- [x] Page **review questions** : édition énoncé + choix + bonne réponse + explication
-- [x] Bouton **Publier / Dépublier** (toggle) sur la page de review et la page détail
+- [x] Page **Modifier les slides** : édition textarea par slide
+- [x] Page **Modifier les questions** : édition énoncé + choix + bonne réponse + explication
+- [x] Bouton **Publier / Dépublier** (toggle) → redirige vers page groupe
+- [x] Bouton **Abandonner** sur slides et questions → retour au groupe
+- [x] Wizard création cours : bouton gros PDF + nommage fichier + multi-fichier
 - [x] `upload_pdf_view` ne publie plus automatiquement → redirige vers review
-- [x] **Commit** : `a764fa6`, `c96173e`
+- [x] **Commit** : `a764fa6`, `c96173e`, `a173c33`
 
 ---
 
 ## Phase 6 — Flow participation amélioré ✅
 
 - [x] Page **lecture slides** : navigation Précédent/Suivant avec barre de progression et dots
+- [x] **Rendu Markdown** des slides via `marked.js` (h1-h4, listes, bold, code, blockquote, tableaux)
+- [x] **Mode aperçu responsable** : même vue `slide_reader`, 3 contextes (`back=slides/group/admin`)
 - [x] Page **résultats détaillés** : pour chaque question, bonne/mauvaise réponse surlignée + explication
 - [x] Champ `answers` (JSON) ajouté sur `Participation` — migration `0002`
-- [x] **Historique** des participations : `/participations/historique/` avec lien vers chaque résultat détaillé
-- [x] Bouton "Mon historique" dans sidebar + dans "Mes cours"
-- [x] "Mes cours" : bouton **Lire** (slides) + bouton **Résultats** (si déjà passé)
-- [x] **Commit** : `HEAD`
+- [x] **Multi-tentatives** : `unique_together` supprimé — migration `0003`
+- [x] **Historique** des participations avec numéro de tentative + bouton Repasser
+- [x] **56 tests structurés** dans `app/__tests__/` (models + views pour chaque app) — 56/56 ✅
+- [x] Nettoyage : templates/vues/routes morts supprimés (`course_detail`, `upload_pdf`, `course_form`)
+- [x] Prompt IA enrichi pour imposer le format Markdown des slides
+- [x] **Commit** : `03cca46`, `9478723`, `ecabce8`, `165fe01`
 
 ---
 
@@ -132,3 +140,5 @@
 ## Prochaine action immédiate
 
 **→ Phase 7** : Déploiement Railway (variables d'env, PostgreSQL, collectstatic, tests prod).
+
+**Dernier commit prod :** `165fe01` — 22 templates · 56/56 tests ✅ · 0 erreur check

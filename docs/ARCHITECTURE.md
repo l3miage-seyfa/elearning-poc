@@ -68,20 +68,26 @@ backend/
 
 | URL | Vue | Accès |
 |-----|-----|-------|
-| `/` | redirect → `accounts:dashboard` | Tous |
+| `/` | redirect → `member_courses` ou `admin_dashboard` selon rôle | Tous |
 | `/accounts/login/` | `accounts:login_view` | Public |
 | `/accounts/logout/` | `accounts:logout_view` | Connecté |
-| `/accounts/dashboard/` | `accounts:dashboard` | Connecté |
+| `/accounts/personnes/` | `accounts:person_list` | Admin |
 | `/groupes/` | `groups:my_groups` | Membre |
-| `/groupes/<pk>/` | `groups:group_detail` | Responsable / Admin |
+| `/groupes/liste/` | `groups:group_list` | Admin |
+| `/groupes/<pk>/` | `groups:group_detail` | Admin |
 | `/cours/admin/` | `courses:admin_dashboard` | Admin |
 | `/cours/mes-cours/` | `courses:member_courses` | Membre |
-| `/cours/upload-pdf/` | `courses:upload_pdf` | Admin |
-| `/cours/upload-pdf/?course_id=X` | `courses:upload_pdf` (régénération) | Admin |
-| `/cours/creer/` | `courses:course_create` | Admin |
-| `/cours/<pk>/` | `courses:course_detail` | Membre |
+| `/cours/groupe/<pk>/responsable/` | `courses:responsible_group` | Responsable/Admin |
+| `/cours/groupe/<pk>/cours/creer/` | `courses:course_create_wizard` | Responsable/Admin |
+| `/cours/<pk>/review/slides/` | `courses:review_slides` | Responsable/Admin |
+| `/cours/<pk>/review/questions/` | `courses:review_questions` | Responsable/Admin |
+| `/cours/<pk>/publier/` | `courses:course_publish` | Responsable/Admin |
+| `/cours/<pk>/supprimer/` | `courses:course_delete` | Responsable/Admin |
+| `/participations/slides/<pk>/` | `participations:slide_reader` | Membre / Aperçu responsable |
 | `/participations/quiz/<pk>/` | `participations:take_quiz` | Membre |
 | `/participations/resultat/<pk>/` | `participations:result` | Membre |
+| `/participations/resultat/<pk>/detail/` | `participations:result_detail` | Membre |
+| `/participations/historique/` | `participations:my_history` | Membre |
 | `/django-admin/` | Django Admin | Superuser |
 
 ---
@@ -143,37 +149,40 @@ person       = FK(Person)
 course       = FK(Course)
 score        = FloatField (null)    # null = quiz non encore soumis
 completed_at = DateTimeField (null)
-# unique_together: (person, course)
+answers      = JSONField (null)     # {"1": "a", "2": "c", ...}
+# Pas de unique_together → multi-tentatives autorisées
 ```
 
 ---
 
-## Flux principal — Upload PDF → Cours publié
+## Flux principal — Création cours PDF → Publié
 
 ```
-POST /cours/upload-pdf/
+POST /cours/groupe/<pk>/cours/creer/   (course_create_wizard)
         │
         ▼
 extract_pdf_text(pdf_bytes)          ← PyMuPDF
         │
         ▼
-upload_pdf(pdf_bytes, filename)      ← Railway Bucket (S3) [optionnel en local]
+generate_slides(pdf_text, nb)        ← GPT-4o → JSON Markdown structuré
         │
         ▼
-generate_slides(pdf_text, nb)        ← GPT-4o → JSON [{order, content}, ...]
-        │
-        ▼
-generate_questions(pdf_text, nb)     ← GPT-4o → JSON [{order, text, choice_*, correct_answer, explanation}, ...]
+generate_questions(pdf_text, nb)     ← GPT-4o → JSON QCM
         │
         ▼
 transaction.atomic():
-  Course.objects.create(...)
+  Course.objects.create(..., is_published=False)
   Slide.objects.bulk_create(...)
   Question.objects.bulk_create(...)
-  course.is_published = True
         │
         ▼
-redirect → /cours/<pk>/
+redirect → review_slides            ← responsable vérifie/modifie
+        │
+        ▼
+review_questions                     ← responsable vérifie/modifie
+        │
+        ▼
+course_publish (POST)               → is_published=True → visible membres
 ```
 
 ---
