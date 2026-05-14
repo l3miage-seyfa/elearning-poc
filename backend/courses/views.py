@@ -250,6 +250,13 @@ def responsible_group_detail(request, pk):
         from django.http import Http404
         raise Http404
 
+    if request.method == 'POST' and 'update_description' in request.POST:
+        new_desc = request.POST.get('description', '').strip()
+        group.description = new_desc
+        group.save()
+        messages.success(request, "Description mise à jour.")
+        return redirect('courses:responsible_group', pk=pk)
+
     members = group.memberships.select_related('person__user').order_by('person__user__last_name')
     courses = Course.objects.filter(group=group).order_by('-created_at')
 
@@ -613,7 +620,7 @@ def course_publish(request, pk):
         course.save()
         status = "publié" if course.is_published else "dépublié"
         messages.success(request, f"Cours « {course.title} » {status}.")
-    return redirect('courses:course_detail', pk=course.pk)
+    return redirect('courses:responsible_group', pk=course.group.pk)
 
 
 @login_and_person_required

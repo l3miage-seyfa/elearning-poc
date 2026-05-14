@@ -9,15 +9,36 @@
     <small class="text-muted">{{ group.get_type_display }} — vue responsable</small>
   </div>
 </div>
-{% if group.description %}<p class="text-muted mb-3">{{ group.description }}</p>{% endif %}
-
-{% if messages %}
-  {% for msg in messages %}
-    <div class="alert alert-{{ msg.tags }} alert-dismissible fade show" role="alert">
-      {{ msg }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+<div class="card mb-3">
+  <div class="card-header d-flex align-items-center justify-content-between py-2">
+    <span><i class="bi bi-pencil-square text-secondary me-1"></i><strong>Description du groupe</strong></span>
+    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#descForm">
+      <i class="bi bi-pencil me-1"></i>Modifier
+    </button>
+  </div>
+  <div class="card-body py-2">
+    {% if group.description %}
+      <p class="text-muted mb-0" id="descText">{{ group.description }}</p>
+    {% else %}
+      <p class="text-muted fst-italic mb-0" id="descText">Aucune description.</p>
+    {% endif %}
+  </div>
+  <div class="collapse" id="descForm">
+    <div class="card-body border-top pt-3">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="update_description" value="1">
+        <div class="mb-2">
+          <textarea name="description" rows="3" class="form-control" placeholder="Description du groupe...">{{ group.description }}</textarea>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-floppy me-1"></i>Enregistrer</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#descForm">Annuler</button>
+        </div>
+      </form>
     </div>
-  {% endfor %}
-{% endif %}
+  </div>
+</div>
 
 <!-- ═══ 1. MEMBRES ════════════════════════════════════════════════════════════ -->
 <div class="card mb-1">
@@ -117,8 +138,8 @@
       <div id="course{{ course.pk }}" class="accordion-collapse collapse">
         <div class="accordion-body pt-2">
           <div class="d-flex gap-2 mb-3 flex-wrap">
-            <a href="{% url 'courses:course_detail' pk=course.pk %}" class="btn btn-sm btn-outline-primary">
-              <i class="bi bi-eye me-1"></i>Aperçu
+            <a href="{% url 'participations:slide_reader' course.pk %}?preview=1&back=group" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-play-circle me-1"></i>Aperçu
             </a>
             <a href="{% url 'courses:review_slides' pk=course.pk %}" class="btn btn-sm btn-outline-secondary">
               <i class="bi bi-pencil-square me-1"></i>Éditer

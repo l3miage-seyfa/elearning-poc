@@ -101,7 +101,19 @@ def my_history(request):
 @login_and_person_required
 def slide_reader(request, course_pk):
     """Lecture des slides : navigation précédent / suivant."""
-    course = get_object_or_404(Course, pk=course_pk, is_published=True)
+    is_preview = request.GET.get('preview') == '1'
+    # back_mode: 'slides' (retour modifier slides) ou 'group' (retour page groupe)
+    back_mode = request.GET.get('back', 'slides')
+    if is_preview:
+        # Mode aperçu responsable : cours pas forcément publié
+        course = get_object_or_404(Course, pk=course_pk)
+        person = request.user.person
+        if not (person.is_admin or course.created_by == person
+                or (hasattr(course.group, 'responsible') and course.group.responsible == person)):
+            from django.http import Http404
+            raise Http404
+    else:
+        course = get_object_or_404(Course, pk=course_pk, is_published=True)
     slides = list(course.slides.order_by('order'))
     try:
         index = int(request.GET.get('slide', 1)) - 1
@@ -115,10 +127,11 @@ def slide_reader(request, course_pk):
         'slide': slide,
         'index': index,
         'total': len(slides),
-        'prev_index': index,        # 1-based dans le template
         'has_prev': index > 0,
         'has_next': index < len(slides) - 1,
-        'next_index': index + 2,    # 1-based
-        'prev_index_1': index,      # 1-based
+        'next_index': index + 2,
+        'prev_index_1': index,
+        'is_preview': is_preview,
+        'back_mode': back_mode,
     })
 

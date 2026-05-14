@@ -31,7 +31,17 @@ def generate_slides(pdf_text: str, nb_slides: int = 5) -> list[dict]:
 À partir du texte suivant, génère exactement {nb_slides} slides de présentation pédagogiques.
 Réponds UNIQUEMENT avec un tableau JSON valide. Chaque objet a :
 - "order" (entier, commence à 1)
-- "content" (texte markdown de la slide, 3-6 lignes)
+- "content" (contenu Markdown de la slide)
+
+Règles de formatage Markdown OBLIGATOIRES pour chaque slide :
+- Commence par un titre avec ## (titre principal de la slide)
+- Utilise ### pour les sous-sections si nécessaire
+- Utilise **texte** pour mettre en gras les notions clés
+- Utilise des listes à puces (- item) pour énumérer des points
+- Utilise *texte* pour l'italique si besoin de nuancer
+- Chaque slide doit faire 5 à 10 lignes de contenu
+- Ne jamais écrire du texte brut sans structure Markdown
+- Ne pas utiliser de HTML
 
 Texte source :
 ---

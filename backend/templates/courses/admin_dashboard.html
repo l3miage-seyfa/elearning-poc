@@ -99,7 +99,7 @@
             {% endif %}
           </td>
           <td>
-            <a href="{% url 'courses:course_detail' course.pk %}" class="btn btn-sm btn-outline-secondary">Voir</a>
+            <a href="{% url 'participations:slide_reader' course.pk %}?preview=1&back=admin" class="btn btn-sm btn-outline-secondary"><i class="bi bi-play-circle me-1"></i>Aperçu</a>
           </td>
         </tr>
         {% empty %}

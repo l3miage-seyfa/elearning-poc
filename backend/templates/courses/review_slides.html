@@ -1,21 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Review slides — {{ course.title }}{% endblock %}
+{% block title %}Modifier les slides — {{ course.title }}{% endblock %}
 {% block content %}
 <div class="d-flex align-items-center gap-2 mb-4">
   <i class="bi bi-file-slides fs-3 text-primary"></i>
   <div>
-    <h1 class="h3 mb-0">Review des slides</h1>
+    <h1 class="h3 mb-0">Modifier les slides</h1>
     <small class="text-muted">{{ course.title }} — étape 1/2</small>
   </div>
 </div>
-
-{% if messages %}
-  {% for msg in messages %}
-    <div class="alert alert-{{ msg.tags }} alert-dismissible fade show" role="alert">
-      {{ msg }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-  {% endfor %}
-{% endif %}
 
 <div class="card mb-3">
   <div class="card-body py-2 px-3 d-flex gap-3">
@@ -49,9 +41,18 @@
     <a href="{% url 'courses:review_questions' pk=course.pk %}" class="btn btn-outline-secondary">
       <i class="bi bi-skip-forward me-1"></i>Passer (sans sauvegarder)
     </a>
-    <a href="{% url 'courses:course_detail' pk=course.pk %}" class="btn btn-outline-secondary ms-auto">
-      <i class="bi bi-eye me-1"></i>Aperçu
+    <a href="{% url 'participations:slide_reader' course.pk %}?preview=1" class="btn btn-outline-primary ms-auto">
+      <i class="bi bi-play-circle me-1"></i>Aperçu slides
     </a>
   </div>
 </form>
+
+<hr class="my-4">
+<div class="d-flex justify-content-end">
+  <a href="{% url 'courses:responsible_group' pk=course.group.pk %}"
+     class="btn btn-outline-danger"
+     onclick="return confirm('Abandonner les modifications ? Les slides non sauvegardées seront perdues.')">  
+    <i class="bi bi-x-circle me-1"></i>Abandonner et retourner au groupe
+  </a>
+</div>
 {% endblock %}
