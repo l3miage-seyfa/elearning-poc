@@ -217,24 +217,6 @@ def upload_pdf_view(request):
     })
 
 
-@login_and_person_required
-def course_detail(request, pk):
-    """Détail d'un cours : slides + questions."""
-    course = get_object_or_404(Course, pk=pk)
-    person = request.user.person
-    # Les membres ne voient que les cours publiés
-    if not course.is_published and not person.is_admin and course.created_by != person:
-        from django.http import Http404
-        raise Http404
-    slides = course.slides.order_by('order')
-    questions = course.questions.order_by('order')
-    return render(request, 'courses/course_detail.html', {
-        'course': course,
-        'slides': slides,
-        'questions': questions,
-    })
-
-
 # ─── Phase 4 : interface responsable de groupe ──────────────────────────────────
 
 
