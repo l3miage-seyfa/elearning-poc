@@ -10,103 +10,126 @@ Dans le cadre du cours **Systèmes de Gestion des Connaissances** (M2 MIAGE), no
 
 ---
 
-## 2. Choix à faire (à définir ensemble)
+## 2. Analyse des outils existants (recherche 14/05/2026)
 
-### 2.1 Quel contexte entreprise ?
-- [ ] Contexte alternance (à préciser : secteur, équipe, besoins réels)
-- [ ] Données disponibles : documents internes, procédures, wikis, PDFs ?
+> Voir [Technologie.md](Technologie.md) pour l'analyse complète de Docebo, CoorpAcademy et Domoscio.
 
-### 2.2 Quelle fonctionnalité principale du POC ?
-Choisir **1 ou 2 fonctionnalités** parmi :
+### Synthèse des fonctionnalités clés du marché
 
-| # | Fonctionnalité | Complexité | Impact |
-|---|----------------|-----------|--------|
-| A | **Génération automatique de quiz** à partir d'un document uploadé | Faible | Fort |
-| B | **Résumé / fiche de synthèse** d'un contenu interne via LLM | Faible | Fort |
-| C | **Parcours personnalisé** selon le niveau de l'apprenant (adaptatif) | Élevée | Très fort |
-| D | **Chatbot pédagogique** qui répond aux questions sur une base de connaissance interne | Moyenne | Très fort |
-| E | **Recommandation de modules** selon profil et historique | Élevée | Fort |
-
-### 2.3 Quelle architecture technique ?
-| Couche | Options | Recommandation |
-|--------|---------|----------------|
-| **LLM / IA** | OpenAI GPT-4o, Mistral, Ollama (local) | GPT-4o via API (le plus rapide pour POC) |
-| **Backend** | Python FastAPI, Node.js Express | Python FastAPI |
-| **Frontend** | Next.js, Streamlit, React | Streamlit (rapidité) ou Next.js (qualité) |
-| **Base de données** | PostgreSQL, SQLite, Supabase | SQLite (POC) → Supabase (prod) |
-| **Vecteur store (RAG)** | ChromaDB, Pinecone, pgvector | ChromaDB (local, gratuit) |
-| **Authentification** | Clerk, Auth.js, simple JWT | Simple JWT pour POC |
-
-### 2.4 Quel pattern IA ?
-- [ ] **RAG (Retrieval-Augmented Generation)** : L'IA répond en s'appuyant sur des documents internes → idéal pour chatbot pédagogique et quiz
-- [ ] **Prompt Engineering simple** : Envoi direct du texte + instructions au LLM → idéal pour génération de quiz/résumés
-- [ ] **Fine-tuning** : Trop lourd pour un POC, à écarter
+| Fonctionnalité | Qui le fait | Pertinence POC |
+|----------------|-------------|---------------|
+| Génération de cours depuis un PDF/doc | Docebo Creator | ⭐⭐⭐ Très forte |
+| Quiz automatiques depuis un contenu | Docebo, CoorpAcademy, Domoscio | ⭐⭐⭐ Très forte |
+| Chatbot pédagogique (Q&A sur contenu) | Docebo Harmony Tutor | ⭐⭐⭐ Très forte |
+| Résumé de document | Docebo Harmony | ⭐⭐⭐ Très forte |
+| Parcours adaptatif (niveau détecté) | Domoscio Hub | ⭐⭐ Forte, complexe |
+| Ancrage mémoriel / rappels espacés | Domoscio Lock | ⭐⭐ Forte, complexe |
+| Gamification / Battle | CoorpAcademy | ⭐ Secondaire |
 
 ---
 
-## 3. Proposition de périmètre POC (à valider)
+## 3. Choix techniques actés ✅
 
-### Scénario proposé : "KnowledgeBoost"
-> Une mini-application web qui permet à un collaborateur d'**uploader un document interne** (PDF, Word, texte) et de :
-> 1. Obtenir un **résumé structuré** du document
-> 2. Générer un **quiz interactif** (5-10 questions QCM) basé sur le contenu
-> 3. Voir son **score et les corrections** expliquées par l'IA
-> 4. (Bonus) Un **chatbot** pour poser des questions sur le document
+> Ces choix sont **définitifs** et doivent être respectés dans tout le développement.
 
-Ce scénario couvre :
-- ✅ Gestion des connaissances (capitalisation de docs internes)
-- ✅ E-learning (apprentissage actif via quiz)
-- ✅ IA générative (LLM pour résumé + questions)
-- ✅ Faisabilité POC en quelques semaines
+### 3.1 LLM / Moteur IA
+**✅ CHOIX ACTÉ : OpenAI GPT-4o**
+- API la plus capable et la mieux documentée
+- Support natif du traitement de documents (texte extrait)
+- Coût maîtrisé pour un POC (env. $5-15 selon usage)
+- Librairie officielle `openai` en Python
 
----
+### 3.2 Fonctionnalités du POC
+**✅ CHOIX ACTÉ : Combinaison inspirée de Docebo Creator + Harmony Tutor**
 
-## 4. Stack technique retenue (à confirmer)
+L'application permettra à un utilisateur de :
+1. **Uploader un document interne** (PDF ou texte) → extraction du contenu
+2. **Générer un résumé structuré** du document via GPT-4o
+3. **Générer un quiz QCM** (5 à 10 questions) basé sur le contenu du document
+4. **Passer le quiz interactif** et voir son score avec les corrections expliquées par l'IA
+5. **(Bonus)** Poser des questions au document via un chatbot (RAG)
+
+> Ces fonctionnalités correspondent exactement à ce que fait **Docebo Creator + Harmony Tutor** mais dans une version POC autonome.
+
+### 3.3 Stack technique
+**✅ CHOIX ACTÉ :**
 
 ```
-Frontend  : Streamlit (Python) ou Next.js 14
-Backend   : Python + FastAPI
-IA        : OpenAI GPT-4o (API) ou Mistral via Ollama
-RAG       : LangChain + ChromaDB
-BDD       : SQLite (POC)
-Déploiement : Local / Docker
+LLM         : OpenAI GPT-4o (API)
+Backend     : Python 3.11 + FastAPI
+Frontend    : Streamlit (rapidité de développement pour POC)
+RAG/Vecteurs: LangChain + ChromaDB (si chatbot activé)
+BDD         : SQLite (léger, suffisant pour POC)
+PDF parsing : PyMuPDF (fitz) ou pdfplumber
+Déploiement : Local (démo en live)
 ```
+
+### 3.4 Pattern IA utilisé
+**✅ CHOIX ACTÉ : Prompt Engineering + RAG (optionnel)**
+- Génération de quiz et résumés : **Prompt Engineering** structuré (rapide, efficace)
+- Chatbot Q&A : **RAG avec ChromaDB** (le document est indexé, l'IA répond en s'y référant)
+- Pas de fine-tuning (trop lourd pour un POC)
 
 ---
 
-## 5. Roadmap
+## 4. Périmètre du POC — Application "DocuLearn"
+
+> **Nom provisoire** : DocuLearn  
+> *Un outil qui transforme n'importe quel document interne en module de formation interactif*
+
+### Scénario utilisateur (User Story principale)
+> En tant que **collaborateur**, je veux **uploader un document interne** (procédure, guide, note) pour **obtenir un résumé + un quiz auto-généré** et **tester ma compréhension**, afin de **monter en compétences rapidement** sur ce sujet.
+
+### Écrans de l'application
+1. **Page d'accueil** : Upload de document (PDF ou texte)
+2. **Page résumé** : Affichage du résumé structuré généré par l'IA
+3. **Page quiz** : QCM interactif (5-10 questions) avec bouton "Valider"
+4. **Page résultats** : Score + corrections détaillées expliquées par l'IA
+5. **(Bonus) Chat** : Interface de questions/réponses sur le document
+
+### Ce que ça démontre pour la gestion des connaissances
+- ✅ **Capitalisation** : Les documents internes deviennent des ressources pédagogiques
+- ✅ **Transfert de connaissances** : Les collaborateurs apprennent activement via quiz
+- ✅ **Gain de temps** : Plus besoin de créer manuellement des supports de formation
+- ✅ **Scalabilité** : Fonctionne sur n'importe quel document
+
+---
+
+## 5. Questions encore ouvertes
+
+- [ ] **Contexte alternance** : Quel secteur ? Quel type de documents disponibles ? (procédures internes, wikis, fiches techniques ?)
+- [ ] **Données de démo** : Quels documents utiliser pour la démo ? (anonymisés si besoin)
+- [ ] **Déploiement** : Local suffit pour la soutenance ? Ou hébergement cloud souhaité ?
+
+---
+
+## 6. Roadmap
 
 | Phase | Description | Statut |
 |-------|-------------|--------|
-| 0 | Initialisation git + définition projet | ✅ En cours |
-| 1 | Choix définitifs (stack, périmètre, données) | 🔲 À faire |
-| 2 | Mise en place de l'environnement de dev | 🔲 À faire |
-| 3 | Développement backend (API + IA) | 🔲 À faire |
-| 4 | Développement frontend (interface) | 🔲 À faire |
-| 5 | Tests avec données réelles | 🔲 À faire |
-| 6 | Bilan : faisabilité, utilité, limites | 🔲 À faire |
-| 7 | Préparation démo + diaporama | 🔲 À faire |
+| 0 | Initialisation git + structure projet | ✅ Fait |
+| 1 | Recherche outils existants + choix définitifs | ✅ Fait (14/05/2026) |
+| 2 | Setup environnement Python + clé OpenAI | 🔲 À faire |
+| 3 | Backend : extraction PDF + appels GPT-4o (résumé + quiz) | 🔲 À faire |
+| 4 | Frontend Streamlit : upload + affichage résumé + quiz | 🔲 À faire |
+| 5 | Intégration complète + tests avec docs réels | 🔲 À faire |
+| 6 | (Bonus) Chatbot RAG avec ChromaDB | 🔲 À faire |
+| 7 | Bilan : faisabilité, utilité, limites | 🔲 À faire |
+| 8 | Préparation démo + diaporama soutenance | 🔲 À faire |
 
 ---
 
-## 6. Bilan anticipé (à compléter)
+## 7. Bilan anticipé
 
 ### Gains attendus
-- Réduction du temps de création de supports de formation
-- Capitalisation automatique des connaissances internes
-- Apprentissage actif et auto-évaluation des collaborateurs
+- Réduction drastique du temps de création de supports de formation
+- Capitalisation automatique des connaissances documentaires internes
+- Apprentissage actif et auto-évaluation pour les collaborateurs
+- Accessible sans compétences techniques (simple upload de document)
 
 ### Limites anticipées
-- Hallucinations du LLM → à mitiger avec RAG
-- Qualité des quiz dépendante de la qualité du document source
-- Coût API OpenAI (gérable avec un quota limité)
-- Données sensibles / confidentielles de l'entreprise → anonymisation nécessaire
-
----
-
-## 7. Questions ouvertes
-
-- [ ] Quel est le contexte exact de l'alternance ? (secteur, taille équipe, type de docs)
-- [ ] Utiliser OpenAI (payant) ou Ollama/Mistral (local, gratuit) ?
-- [ ] Interface Streamlit (simple, rapide) ou Next.js (plus pro, plus long) ?
-- [ ] Viser une démo en local ou déploiement cloud ?
+- Hallucinations du LLM → à mitiger avec des prompts stricts et le RAG
+- Qualité des quiz dépendante de la qualité et clarté du document source
+- Coût API OpenAI → gérable avec un quota (token limit par requête)
+- Confidentialité des documents → ne pas envoyer de données sensibles sans accord
+- Pas de suivi de progression long terme (hors périmètre POC)
