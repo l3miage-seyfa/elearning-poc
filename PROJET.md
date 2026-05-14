@@ -33,103 +33,232 @@ Dans le cadre du cours **Systèmes de Gestion des Connaissances** (M2 MIAGE), no
 > Ces choix sont **définitifs** et doivent être respectés dans tout le développement.
 
 ### 3.1 LLM / Moteur IA
-**✅ CHOIX ACTÉ : OpenAI GPT-4o**
+**✅ OpenAI GPT-4o**
 - API la plus capable et la mieux documentée
-- Support natif du traitement de documents (texte extrait)
 - Coût maîtrisé pour un POC (env. $5-15 selon usage)
 - Librairie officielle `openai` en Python
 
-### 3.2 Fonctionnalités du POC
-**✅ CHOIX ACTÉ : Combinaison inspirée de Docebo Creator + Harmony Tutor**
-
-L'application permettra à un utilisateur de :
-1. **Uploader un document interne** (PDF ou texte) → extraction du contenu
-2. **Générer un résumé structuré** du document via GPT-4o
-3. **Générer un quiz QCM** (5 à 10 questions) basé sur le contenu du document
-4. **Passer le quiz interactif** et voir son score avec les corrections expliquées par l'IA
-5. **(Bonus)** Poser des questions au document via un chatbot (RAG)
-
-> Ces fonctionnalités correspondent exactement à ce que fait **Docebo Creator + Harmony Tutor** mais dans une version POC autonome.
-
-### 3.3 Stack technique
+### 3.2 Stack technique
 **✅ CHOIX ACTÉ :**
 
 ```
 LLM         : OpenAI GPT-4o (API)
-Backend     : Python 3.11 + FastAPI
-Frontend    : Streamlit (rapidité de développement pour POC)
-RAG/Vecteurs: LangChain + ChromaDB (si chatbot activé)
+Backend     : Python 3.11 + Django (auth + ORM + admin intégrés)
+Frontend    : Django Templates (HTML/Jinja2, sans CSS élaboré, tables simples)
 BDD         : SQLite (léger, suffisant pour POC)
-PDF parsing : PyMuPDF (fitz) ou pdfplumber
+PDF parsing : PyMuPDF (fitz)
 Déploiement : Local (démo en live)
 ```
 
-### 3.4 Pattern IA utilisé
-**✅ CHOIX ACTÉ : Prompt Engineering + RAG (optionnel)**
-- Génération de quiz et résumés : **Prompt Engineering** structuré (rapide, efficace)
-- Chatbot Q&A : **RAG avec ChromaDB** (le document est indexé, l'IA répond en s'y référant)
-- Pas de fine-tuning (trop lourd pour un POC)
+> **Pourquoi Django ?** Auth, panneau admin, ORM et gestion des sessions sont inclus nativement. Pas de deux serveurs à gérer. Idéal pour un POC avec plusieurs rôles et entités.
+
+### 3.3 Pattern IA utilisé
+**✅ Prompt Engineering structuré**
+- Génération des slides : envoi du texte extrait du PDF + instructions précises à GPT-4o
+- Génération des questions QCM : prompt séparé, nombre configurable
+- Pas de RAG, pas de fine-tuning (hors périmètre POC)
 
 ---
 
-## 4. Périmètre du POC — Application "DocuLearn"
+## 4. Modèle de données ✅
 
-> **Nom provisoire** : DocuLearn  
-> *Un outil qui transforme n'importe quel document interne en module de formation interactif*
+### 4.1 Person (Utilisateur)
+| Champ | Type | Contrainte |
+|-------|------|-----------|
+| `id` | Integer | PK, auto |
+| `first_name` | String | requis |
+| `last_name` | String | requis |
+| `email` | String | unique, requis |
+| `password` | String | hashé, saisi par l'admin à la création |
+| `is_admin` | Boolean | `False` par défaut — seul `admin@poc.com` est `True` |
 
-### Scénario utilisateur (User Story principale)
-> En tant que **collaborateur**, je veux **uploader un document interne** (procédure, guide, note) pour **obtenir un résumé + un quiz auto-généré** et **tester ma compréhension**, afin de **monter en compétences rapidement** sur ce sujet.
-
-### Écrans de l'application
-1. **Page d'accueil** : Upload de document (PDF ou texte)
-2. **Page résumé** : Affichage du résumé structuré généré par l'IA
-3. **Page quiz** : QCM interactif (5-10 questions) avec bouton "Valider"
-4. **Page résultats** : Score + corrections détaillées expliquées par l'IA
-5. **(Bonus) Chat** : Interface de questions/réponses sur le document
-
-### Ce que ça démontre pour la gestion des connaissances
-- ✅ **Capitalisation** : Les documents internes deviennent des ressources pédagogiques
-- ✅ **Transfert de connaissances** : Les collaborateurs apprennent activement via quiz
-- ✅ **Gain de temps** : Plus besoin de créer manuellement des supports de formation
-- ✅ **Scalabilité** : Fonctionne sur n'importe quel document
+- Une personne peut être membre de plusieurs groupes
+- Une personne peut être responsable de plusieurs groupes
+- Une personne responsable d'un groupe en est **automatiquement membre**
 
 ---
 
-## 5. Questions encore ouvertes
+### 4.2 Group (Groupe)
+| Champ | Type | Contrainte |
+|-------|------|-----------|
+| `id` | Integer | PK, auto |
+| `name` | String | requis |
+| `description` | Text | optionnel |
+| `type` | Enum | `direction` \| `equipe` \| `projet` |
+| `parent` | FK → Group | nullable (groupe racine si null) |
+| `responsible` | FK → Person | requis |
+| `members` | M2M → Person | via table `GroupMembership` |
 
-- [ ] **Contexte alternance** : Quel secteur ? Quel type de documents disponibles ? (procédures internes, wikis, fiches techniques ?)
-- [ ] **Données de démo** : Quels documents utiliser pour la démo ? (anonymisés si besoin)
-- [ ] **Déploiement** : Local suffit pour la soutenance ? Ou hébergement cloud souhaité ?
+- Hiérarchie **multi-niveaux** (parent → enfant → petit-enfant...)
+- Le responsable est automatiquement ajouté aux membres à la création/modification
 
 ---
 
-## 6. Roadmap
+### 4.3 Course (Cours)
+| Champ | Type | Contrainte |
+|-------|------|-----------|
+| `id` | Integer | PK, auto |
+| `title` | String | requis |
+| `group` | FK → Group | requis (un cours appartient à un seul groupe) |
+| `created_by` | FK → Person | responsable qui a créé le cours |
+| `nb_slides` | Integer | configurable à la création |
+| `nb_questions` | Integer | configurable à la création |
+| `is_published` | Boolean | `False` jusqu'à validation par le responsable |
+| `created_at` | DateTime | auto |
+
+---
+
+### 4.4 Slide (Page d'un cours)
+| Champ | Type | Contrainte |
+|-------|------|-----------|
+| `id` | Integer | PK, auto |
+| `course` | FK → Course | requis |
+| `order` | Integer | numéro de la slide |
+| `content` | Text | texte pur, éditable par le responsable |
+
+---
+
+### 4.5 Question (QCM d'un cours)
+| Champ | Type | Contrainte |
+|-------|------|-----------|
+| `id` | Integer | PK, auto |
+| `course` | FK → Course | requis |
+| `order` | Integer | numéro de la question |
+| `text` | Text | intitulé de la question |
+| `choice_a` | String | requis |
+| `choice_b` | String | requis |
+| `choice_c` | String | requis |
+| `choice_d` | String | requis |
+| `correct_answer` | Enum | `a` \| `b` \| `c` \| `d` |
+| `explanation` | Text | explication de la bonne réponse (générée par IA) |
+
+- 4 choix par question, **1 seule bonne réponse**
+- Éditable par le responsable avant publication
+
+---
+
+### 4.6 Participation (Historique d'un membre)
+| Champ | Type | Contrainte |
+|-------|------|-----------|
+| `id` | Integer | PK, auto |
+| `person` | FK → Person | requis |
+| `course` | FK → Course | requis |
+| `score` | Float | pourcentage (0.0 → 100.0) |
+| `completed_at` | DateTime | auto |
+
+- Contrainte unique : `(person, course)` → **une seule participation par personne par cours**
+- Si le cours est modifié après participation, la note est **conservée telle quelle**
+
+---
+
+## 5. Rôles et droits ✅
+
+### 5.1 Admin (`admin@poc.com`)
+- Compte unique, créé au démarrage (`is_admin = True`)
+- Accès au panneau d'administration Django (ou pages dédiées)
+- Peut faire le **CRUD complet** sur : Personnes, Groupes
+
+### 5.2 Responsable de groupe
+- Est une `Person` ordinaire avec le rôle responsable sur un ou plusieurs groupes
+- Dans l'interface **Mes groupes** : voit ses groupes + bouton "Créer un cours"
+- Peut créer, modifier, supprimer les cours de **ses groupes uniquement**
+- Voit la liste des membres de ses groupes et leurs participations
+
+### 5.3 Membre ordinaire
+- Dans **Mes cours** : voit tous les cours disponibles organisés par groupe (cours de ses groupes + cours des groupes parents, via héritage hiérarchique)
+- Peut participer à un cours non encore complété
+- Après participation, voit sa note en pourcentage
+- **Ne peut pas refaire** un cours déjà complété
+
+---
+
+## 6. Logique d'accès aux cours (héritage hiérarchique) ✅
+
+Un membre a accès aux cours de :
+1. **Ses groupes directs** (groupes dont il est membre)
+2. **Tous les groupes ancêtres** (parents, grands-parents...) de ses groupes directs
+
+> Exemple : Marie est membre du groupe `Équipe Dev` (enfant de `Direction IT`, elle-même enfant de `Entreprise`). Marie voit les cours de `Équipe Dev` + `Direction IT` + `Entreprise`.
+
+L'inverse **n'est pas vrai** : un membre d'un groupe parent ne voit **pas** les cours des groupes enfants.
+
+---
+
+## 7. Flow de création d'un cours ✅
+
+```
+1. Le responsable va sur la page de son groupe
+2. Il clique "Créer un cours"
+3. Il saisit : titre du cours, nombre de slides souhaité, nombre de questions souhaité
+4. Il uploade un PDF
+5. Le système extrait le texte du PDF (PyMuPDF)
+6. Appel GPT-4o → génère N slides (texte pur)
+7. Appel GPT-4o → génère M questions QCM avec explications
+8. Le responsable visualise slide par slide → peut éditer le texte de chaque slide
+9. Le responsable visualise chaque question → peut éditer l'intitulé, les choix, la bonne réponse
+10. Il clique "Publier" → is_published = True → cours visible pour les membres
+```
+
+- Tant que `is_published = False`, le cours est **invisible pour les membres**
+- Après publication, le responsable peut toujours **modifier ou supprimer** le cours
+- Si le cours est modifié après des participations, les notes existantes sont **conservées**
+
+---
+
+## 8. Écrans de l'application ✅
+
+### Interface Admin
+| Écran | Description |
+|-------|-------------|
+| Login | Email + mot de passe |
+| Dashboard admin | Vue d'ensemble : nb personnes, nb groupes, nb cours |
+| Gestion personnes | Liste + Créer / Modifier / Supprimer une personne |
+| Gestion groupes | Liste + Créer / Modifier / Supprimer un groupe (avec parent, responsable, membres) |
+
+### Interface Membre / Responsable
+| Écran | Description |
+|-------|-------------|
+| Login | Email + mot de passe |
+| Mes cours | Tous les cours disponibles organisés par groupe, avec statut (non commencé / note %) |
+| Mes groupes | Liste des groupes dont l'utilisateur est membre |
+| Page groupe (responsable) | Liste des cours du groupe + bouton "Créer un cours" + liste membres |
+| Créer un cours | Upload PDF + config nb slides/questions → génération IA → review/édition → publication |
+| Passer un cours | Slides en lecture → quiz → résultats avec score % et explications |
+
+---
+
+## 9. Roadmap ✅
 
 | Phase | Description | Statut |
 |-------|-------------|--------|
 | 0 | Initialisation git + structure projet | ✅ Fait |
 | 1 | Recherche outils existants + choix définitifs | ✅ Fait (14/05/2026) |
-| 2 | Setup environnement Python + clé OpenAI | 🔲 À faire |
-| 3 | Backend : extraction PDF + appels GPT-4o (résumé + quiz) | 🔲 À faire |
-| 4 | Frontend Streamlit : upload + affichage résumé + quiz | 🔲 À faire |
-| 5 | Intégration complète + tests avec docs réels | 🔲 À faire |
-| 6 | (Bonus) Chatbot RAG avec ChromaDB | 🔲 À faire |
-| 7 | Bilan : faisabilité, utilité, limites | 🔲 À faire |
-| 8 | Préparation démo + diaporama soutenance | 🔲 À faire |
+| 2 | Spécification complète (ce document) | ✅ Fait (14/05/2026) |
+| 3 | Setup Django + modèles + migrations + admin | 🔲 À faire |
+| 4 | Auth (login/logout, redirect selon rôle) | 🔲 À faire |
+| 5 | Interface Admin : CRUD Personnes & Groupes | 🔲 À faire |
+| 6 | Interface Membre : Mes cours + Mes groupes | 🔲 À faire |
+| 7 | Génération IA : extraction PDF + appels GPT-4o | 🔲 À faire |
+| 8 | Flow création cours : upload → génération → édition → publication | 🔲 À faire |
+| 9 | Flow participation : slides → quiz → résultats | 🔲 À faire |
+| 10 | Tests avec données réelles | 🔲 À faire |
+| 11 | Bilan : faisabilité, utilité, limites | 🔲 À faire |
+| 12 | Préparation démo + diaporama soutenance | 🔲 À faire |
 
 ---
 
-## 7. Bilan anticipé
+## 10. Bilan anticipé
 
 ### Gains attendus
-- Réduction drastique du temps de création de supports de formation
+- Création de modules de formation depuis un PDF en quelques minutes
 - Capitalisation automatique des connaissances documentaires internes
-- Apprentissage actif et auto-évaluation pour les collaborateurs
-- Accessible sans compétences techniques (simple upload de document)
+- Apprentissage actif et auto-évaluation structurée par groupe/équipe
+- Suivi simple de la progression des membres par les responsables
 
 ### Limites anticipées
-- Hallucinations du LLM → à mitiger avec des prompts stricts et le RAG
-- Qualité des quiz dépendante de la qualité et clarté du document source
+- Qualité des slides/quiz dépendante de la clarté du document source
+- Hallucinations GPT-4o → le responsable doit relire avant publication
 - Coût API OpenAI → gérable avec un quota (token limit par requête)
-- Confidentialité des documents → ne pas envoyer de données sensibles sans accord
-- Pas de suivi de progression long terme (hors périmètre POC)
+- Confidentialité → ne pas uploader de documents sensibles sans accord
+- Pas de système de rappel mémoriel (hors périmètre POC)
+- Interface minimaliste (pas de CSS élaboré, volontaire pour POC)
