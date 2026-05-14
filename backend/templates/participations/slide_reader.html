@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}{{ course.title }} — Slide {{ index|add:1 }}/{{ total }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-play-circle fs-3 text-primary"></i>
+  <div class="flex-grow-1">
+    <h2 class="h4 mb-0">{{ course.title }}</h2>
+    <small class="text-muted">{{ course.group.name }}</small>
+  </div>
+  <a href="{% url 'participations:take_quiz' course.pk %}" class="btn btn-success btn-sm">
+    <i class="bi bi-patch-question me-1"></i>Passer le quiz
+  </a>
+</div>
+
+<!-- Barre de progression -->
+<div class="progress mb-4" style="height:6px;">
+  <div class="progress-bar bg-primary" style="width:{% widthratio index|add:1 total 100 %}%"></div>
+</div>
+
+{% if slide %}
+<div class="card shadow-sm mb-4">
+  <div class="card-header d-flex align-items-center justify-content-between py-2">
+    <span class="fw-semibold"><i class="bi bi-layers me-1 text-primary"></i>Slide {{ index|add:1 }} / {{ total }}</span>
+  </div>
+  <div class="card-body" style="white-space: pre-wrap; min-height: 200px; font-size: 1.05rem; line-height: 1.7;">{{ slide.content }}</div>
+</div>
+{% endif %}
+
+<!-- Navigation -->
+<div class="d-flex justify-content-between align-items-center">
+  {% if has_prev %}
+    <a href="?slide={{ prev_index_1 }}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Précédent
+    </a>
+  {% else %}
+    <a href="{% url 'courses:course_detail' course.pk %}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Aperçu du cours
+    </a>
+  {% endif %}
+
+  <!-- Dots navigation -->
+  <div class="d-flex gap-1">
+    {% for s in slides %}
+    <a href="?slide={{ forloop.counter }}"
+       class="rounded-circle {% if forloop.counter0 == index %}bg-primary{% else %}bg-secondary opacity-25{% endif %}"
+       style="width:10px;height:10px;display:inline-block;"
+       title="Slide {{ forloop.counter }}"></a>
+    {% endfor %}
+  </div>
+
+  {% if has_next %}
+    <a href="?slide={{ next_index }}" class="btn btn-primary">
+      Suivant <i class="bi bi-arrow-right ms-1"></i>
+    </a>
+  {% else %}
+    <a href="{% url 'participations:take_quiz' course.pk %}" class="btn btn-success">
+      <i class="bi bi-patch-question me-1"></i>Passer le quiz
+    </a>
+  {% endif %}
+</div>
+{% endblock %}

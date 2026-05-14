@@ -1,9 +1,16 @@
 {% extends 'base.html' %}
+{% load course_extras %}
 {% block title %}Mes cours{% endblock %}
 {% block nav_courses %}active{% endblock %}
 
 {% block content %}
-<h2 class="mb-4"><i class="bi bi-book me-2"></i>Mes cours disponibles</h2>
+<div class="d-flex align-items-center gap-2 mb-4">
+  <i class="bi bi-book fs-3 text-primary"></i>
+  <h2 class="h3 mb-0">Mes cours disponibles</h2>
+  <a href="{% url 'participations:my_history' %}" class="btn btn-outline-secondary btn-sm ms-auto">
+    <i class="bi bi-clock-history me-1"></i>Mon historique
+  </a>
+</div>
 
 {% if courses %}
   <div class="row row-cols-1 row-cols-md-3 g-4">
@@ -13,14 +20,24 @@
         <div class="card-body">
           <span class="badge bg-info text-dark mb-2">{{ course.group.name }}</span>
           <h5 class="card-title">{{ course.title }}</h5>
-          <p class="small text-muted">{{ course.nb_slides }} slides · {{ course.nb_questions }} questions</p>
+          <p class="small text-muted mb-0">
+            <i class="bi bi-layers me-1"></i>{{ course.nb_slides }} slides
+            &nbsp;·&nbsp;
+            <i class="bi bi-patch-question me-1"></i>{{ course.nb_questions }} questions
+          </p>
         </div>
-        <div class="card-footer d-flex gap-2">
-          <a href="{% url 'courses:course_detail' course.pk %}" class="btn btn-sm btn-outline-primary">Voir</a>
+        <div class="card-footer d-flex gap-2 flex-wrap">
+          <a href="{% url 'participations:slide_reader' course.pk %}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-play-circle me-1"></i>Lire
+          </a>
           {% if course.pk not in participated_ids %}
-            <a href="{% url 'participations:take_quiz' course.pk %}" class="btn btn-sm btn-success">Passer le quiz</a>
+            <a href="{% url 'participations:take_quiz' course.pk %}" class="btn btn-sm btn-success">
+              <i class="bi bi-patch-question me-1"></i>Quiz
+            </a>
           {% else %}
-            <span class="btn btn-sm btn-secondary disabled"><i class="bi bi-check-circle me-1"></i>Quiz terminé</span>
+            <a href="{% url 'participations:result_detail' pk=participated_pks|get_item:course.pk %}" class="btn btn-sm btn-secondary">
+              <i class="bi bi-check-circle me-1"></i>Résultats
+            </a>
           {% endif %}
         </div>
       </div>

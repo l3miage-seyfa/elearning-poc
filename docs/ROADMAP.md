@@ -51,47 +51,47 @@
 
 ---
 
-## Phase 3 — CRUD Admin : Personnes & Groupes 🔲
+## Phase 3 — CRUD Admin : Personnes & Groupes ✅
 
-> L'admin peut créer / modifier / supprimer des personnes et des groupes depuis l'interface web (pas uniquement via Django admin).
-
-- [ ] Vue + formulaire **créer une personne** (nom, prénom, email, mot de passe)
-- [ ] Vue **modifier / supprimer** une personne
-- [ ] Vue + formulaire **créer un groupe** (nom, description, type, parent, responsable, membres)
-- [ ] Logique : ajout automatique du responsable comme membre (déjà dans `Group.save()`)
-- [ ] Vue **modifier / supprimer** un groupe
-- [ ] Dashboard admin : compteurs (nb personnes, nb groupes, nb cours publiés)
-
----
-
-## Phase 4 — Interface Responsable de groupe 🔲
-
-> Un responsable voit les membres de son groupe, leurs participations, et peut gérer les cours.
-
-- [ ] Page groupe responsable : liste des membres + leurs participations + scores
-- [ ] Bouton "Créer un cours" depuis la page groupe (lien vers `upload_pdf`)
-- [ ] Restreindre l'édition/suppression des cours aux seuls responsables du groupe concerné
+- [x] Vue + formulaire **créer une personne** (nom, prénom, email, mot de passe)
+- [x] Vue **modifier / supprimer** une personne
+- [x] Vue + formulaire **créer un groupe** (nom, description, type, parent, responsable, membres)
+- [x] Logique : ajout automatique du responsable comme membre (`Group.save()`)
+- [x] Vue **modifier / supprimer** un groupe
+- [x] Dashboard admin : compteurs (nb personnes, nb groupes, nb cours publiés)
+- [x] **Commit** : `70c36bc`
 
 ---
 
-## Phase 5 — Review & édition des slides/questions 🔲
+## Phase 4 — Interface Responsable de groupe ✅
 
-> Avant publication, le responsable peut corriger chaque slide et chaque question.
-
-- [ ] Page **review slides** : affichage slide par slide, formulaire d'édition inline
-- [ ] Page **review questions** : affichage question par question, édition intitulé + choix + bonne réponse
-- [ ] Bouton **Publier** sur la page de review (plutôt que publication automatique)
-- [ ] Modifier `upload_pdf_view` : ne plus publier automatiquement, rediriger vers la review
+- [x] Page groupe responsable : liste membres + participations + scores
+- [x] Ajout/retrait de membres via email avec autocomplete live
+- [x] Bouton "Gérer" dans "Mes groupes" → page responsable
+- [x] Boutons Publier/Dépublier/Supprimer cours inline
+- [x] **Commit** : `a764fa6`, `5e25ba2`
 
 ---
 
-## Phase 6 — Flow participation amélioré 🔲
+## Phase 5 — Review & édition des slides/questions ✅
 
-> Navigation slide par slide, résultats détaillés par question.
+- [x] Page **review slides** : édition textarea par slide
+- [x] Page **review questions** : édition énoncé + choix + bonne réponse + explication
+- [x] Bouton **Publier / Dépublier** (toggle) sur la page de review et la page détail
+- [x] `upload_pdf_view` ne publie plus automatiquement → redirige vers review
+- [x] **Commit** : `a764fa6`, `c96173e`
 
-- [ ] Page **lecture slides** : navigation précédent / suivant (actuellement accordion statique)
-- [ ] Page **résultats détaillés** : pour chaque question, afficher bonne/mauvaise réponse + explication
-- [ ] Historique des participations dans "Mes cours"
+---
+
+## Phase 6 — Flow participation amélioré ✅
+
+- [x] Page **lecture slides** : navigation Précédent/Suivant avec barre de progression et dots
+- [x] Page **résultats détaillés** : pour chaque question, bonne/mauvaise réponse surlignée + explication
+- [x] Champ `answers` (JSON) ajouté sur `Participation` — migration `0002`
+- [x] **Historique** des participations : `/participations/historique/` avec lien vers chaque résultat détaillé
+- [x] Bouton "Mon historique" dans sidebar + dans "Mes cours"
+- [x] "Mes cours" : bouton **Lire** (slides) + bouton **Résultats** (si déjà passé)
+- [x] **Commit** : `HEAD`
 
 ---
 
@@ -131,4 +131,4 @@
 
 ## Prochaine action immédiate
 
-**→ Phase 3** : CRUD web pour Personnes et Groupes + dashboard admin avec compteurs.
+**→ Phase 7** : Déploiement Railway (variables d'env, PostgreSQL, collectstatic, tests prod).

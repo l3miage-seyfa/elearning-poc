@@ -48,6 +48,9 @@
           <a class="nav-link {% block nav_courses %}{% endblock %}" href="{% url 'courses:member_courses' %}"><i class="bi bi-book me-1"></i>Mes cours</a>
         </li>
         <li class="nav-item">
+          <a class="nav-link {% block nav_history %}{% endblock %}" href="{% url 'participations:my_history' %}"><i class="bi bi-clock-history me-1"></i>Mon historique</a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link {% block nav_groups %}{% endblock %}" href="{% url 'groups:my_groups' %}"><i class="bi bi-people me-1"></i>Mes groupes</a>
         </li>
         {% if user.person.is_admin %}
@@ -64,15 +67,6 @@
         <li class="nav-item">
           <a class="nav-link {% block nav_groups_admin %}{% endblock %}" href="{% url 'groups:group_list' %}"><i class="bi bi-diagram-3 me-1"></i>Groupes</a>
         </li>
-        {% elif user.person.managed_groups.exists %}
-        <li class="nav-item mt-2 text-muted small px-3">RESPONSABLE</li>
-        {% for g in user.person.managed_groups.all %}
-        <li class="nav-item">
-          <a class="nav-link" href="{% url 'courses:responsible_group' pk=g.pk %}">
-            <i class="bi bi-people-fill me-1"></i>{{ g.name }}
-          </a>
-        </li>
-        {% endfor %}
         {% endif %}
       </ul>
     </nav>

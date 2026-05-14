@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Mon historique{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+  <i class="bi bi-clock-history fs-3 text-primary"></i>
+  <h1 class="h3 mb-0">Mon historique de participations</h1>
+</div>
+
+{% if participations %}
+<div class="table-responsive">
+  <table class="table table-hover">
+    <thead class="table-light">
+      <tr>
+        <th>Cours</th>
+        <th>Groupe</th>
+        <th class="text-center">Score</th>
+        <th>Date</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in participations %}
+      <tr>
+        <td class="fw-semibold">{{ p.course.title }}</td>
+        <td><span class="badge bg-info text-dark">{{ p.course.group.name }}</span></td>
+        <td class="text-center">
+          <span class="badge fs-6
+            {% if p.score >= 80 %}bg-success
+            {% elif p.score >= 50 %}bg-warning text-dark
+            {% else %}bg-danger{% endif %}">
+            {{ p.score|floatformat:0 }}%
+          </span>
+        </td>
+        <td class="text-muted small">{{ p.completed_at|date:"d/m/Y H:i" }}</td>
+        <td>
+          <a href="{% url 'participations:result_detail' pk=p.pk %}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-eye me-1"></i>Détail
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+  <i class="bi bi-info-circle me-2"></i>Vous n'avez pas encore passé de quiz.
+  <a href="{% url 'courses:member_courses' %}" class="alert-link ms-1">Voir mes cours disponibles</a>
+</div>
+{% endif %}
+{% endblock %}

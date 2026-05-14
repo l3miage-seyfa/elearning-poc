@@ -52,13 +52,14 @@ def member_courses(request):
 
     # Ajoute les participations existantes
     from participations.models import Participation
-    participated_ids = set(
-        Participation.objects.filter(person=person).values_list('course_id', flat=True)
-    )
+    participations = Participation.objects.filter(person=person, score__isnull=False)
+    participated_ids = set(p.course_id for p in participations)
+    participated_pks = {p.course_id: p.pk for p in participations}  # course_pk → participation_pk
 
     return render(request, 'courses/member_courses.html', {
         'courses': courses,
         'participated_ids': participated_ids,
+        'participated_pks': participated_pks,
     })
 
 

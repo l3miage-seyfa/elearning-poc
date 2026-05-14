@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% load course_extras %}
+{% block title %}Résultat — {{ participation.course.title }}{% endblock %}
+
+{% block content %}
+<!-- En-tête score -->
+<div class="text-center py-4">
+  {% if participation.score >= 80 %}
+    <div class="text-success" style="font-size:4rem;"><i class="bi bi-trophy-fill"></i></div>
+    <h2 class="text-success mt-2">Excellent !</h2>
+  {% elif participation.score >= 50 %}
+    <div class="text-primary" style="font-size:4rem;"><i class="bi bi-hand-thumbs-up-fill"></i></div>
+    <h2 class="text-primary mt-2">Bien joué !</h2>
+  {% else %}
+    <div class="text-warning" style="font-size:4rem;"><i class="bi bi-book-fill"></i></div>
+    <h2 class="text-warning mt-2">Continuez à apprendre !</h2>
+  {% endif %}
+  <p class="lead mt-2">Score : <strong class="fs-3">{{ participation.score }}%</strong></p>
+  <p class="text-muted mb-0">{{ participation.course.title }}</p>
+  <p class="text-muted small">Terminé le {{ participation.completed_at|date:"d/m/Y à H:i" }}</p>
+</div>
+
+<!-- Détail question par question -->
+<h4 class="mb-3"><i class="bi bi-list-check me-2"></i>Détail des réponses</h4>
+<div class="d-flex flex-column gap-3 mb-4">
+{% for item in results %}
+<div class="card border-{% if item.is_correct %}success{% else %}danger{% endif %}">
+  <div class="card-header py-2 d-flex align-items-center gap-2
+              bg-{% if item.is_correct %}success{% else %}danger{% endif %} bg-opacity-10">
+    {% if item.is_correct %}
+      <i class="bi bi-check-circle-fill text-success"></i>
+    {% else %}
+      <i class="bi bi-x-circle-fill text-danger"></i>
+    {% endif %}
+    <span class="fw-semibold">Question {{ forloop.counter }}</span>
+  </div>
+  <div class="card-body pb-2">
+    <p class="mb-2">{{ item.question.text }}</p>
+    <div class="row g-2">
+      {% for letter in "abcd" %}
+      {% with choice_key="choice_"|add:letter %}
+      <div class="col-md-6">
+        <div class="px-2 py-1 rounded small
+          {% if letter == item.question.correct_answer %}border border-success bg-success bg-opacity-10 fw-semibold
+          {% elif letter == item.given and not item.is_correct %}border border-danger bg-danger bg-opacity-10
+          {% else %}border{% endif %}">
+          <span class="text-uppercase fw-bold me-1">{{ letter }})</span>
+          {{ item.question|get_choice:letter }}
+          {% if letter == item.question.correct_answer %}<i class="bi bi-check-lg text-success ms-1"></i>{% endif %}
+          {% if letter == item.given and not item.is_correct %}<i class="bi bi-x-lg text-danger ms-1"></i>{% endif %}
+        </div>
+      </div>
+      {% endwith %}
+      {% endfor %}
+    </div>
+    {% if item.question.explanation %}
+    <div class="mt-2 p-2 bg-light rounded small text-muted">
+      <i class="bi bi-lightbulb me-1 text-warning"></i><strong>Explication :</strong> {{ item.question.explanation }}
+    </div>
+    {% endif %}
+    {% if not item.given %}
+    <p class="text-muted small mt-2 mb-0"><i class="bi bi-dash-circle me-1"></i>Pas de réponse donnée.</p>
+    {% endif %}
+  </div>
+</div>
+{% empty %}
+<p class="text-muted">Aucun détail disponible.</p>
+{% endfor %}
+</div>
+
+<div class="d-flex gap-2 justify-content-center">
+  <a href="{% url 'courses:member_courses' %}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Mes cours
+  </a>
+  <a href="{% url 'participations:my_history' %}" class="btn btn-outline-primary">
+    <i class="bi bi-clock-history me-1"></i>Mon historique
+  </a>
+</div>
+{% endblock %}

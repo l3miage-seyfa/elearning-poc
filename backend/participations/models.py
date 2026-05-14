@@ -14,6 +14,7 @@ class Participation(models.Model):
     )
     score = models.FloatField(null=True, blank=True, verbose_name="Score (%)")
     completed_at = models.DateTimeField(null=True, blank=True, verbose_name="Terminé le")
+    answers = models.TextField(blank=True, default='{}', verbose_name="Réponses (JSON)")
 
     def __str__(self):
         score_str = f"{self.score:.0f}%" if self.score is not None else "en cours"
