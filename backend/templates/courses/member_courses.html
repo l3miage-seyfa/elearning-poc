@@ -3,7 +3,7 @@
 {% block nav_courses %}active{% endblock %}
 
 {% block content %}
-<h2 class="mb-4">📖 Mes cours disponibles</h2>
+<h2 class="mb-4"><i class="bi bi-book me-2"></i>Mes cours disponibles</h2>
 
 {% if courses %}
   <div class="row row-cols-1 row-cols-md-3 g-4">
@@ -20,7 +20,7 @@
           {% if course.pk not in participated_ids %}
             <a href="{% url 'participations:take_quiz' course.pk %}" class="btn btn-sm btn-success">Passer le quiz</a>
           {% else %}
-            <span class="btn btn-sm btn-secondary disabled">Quiz terminé ✓</span>
+            <span class="btn btn-sm btn-secondary disabled"><i class="bi bi-check-circle me-1"></i>Quiz terminé</span>
           {% endif %}
         </div>
       </div>
