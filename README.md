@@ -1,44 +1,92 @@
-# 🎓 POC — Système de E-Learning basé sur l'IA Générative
+# POC — Système de E-Learning basé sur l'IA Générative
 
 > **Cours** : Systèmes de Gestion des Connaissances (SGC) — M2 MIAGE  
-> **Type** : Proof of Concept (POC)  
-> **Technologie** : LMS augmenté par IA Générative  
-> **Date de soutenance** : Mai / Juin 2026
+> **Type** : Proof of Concept  
+> **Soutenance** : Mai / Juin 2026
 
 ---
 
-## 🎯 Objectif
+## Démarrage rapide
 
-Développer un **prototype fonctionnel** d'un système de e-learning intelligent qui :
-- Génère automatiquement du contenu pédagogique (quiz, résumés, fiches)
-- Personnalise le parcours d'apprentissage selon le profil de l'apprenant
-- S'appuie sur des données réalistes du contexte entreprise/alternance
-- Apporte une **plus-value concrète** à la gestion des connaissances d'une équipe
+```bash
+cd backend
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env          # puis renseigner OPENAI_API_KEY
+python manage.py migrate
+python manage.py runserver
+```
+
+Ouvrir : **http://127.0.0.1:8000**  
+Compte admin : `admin@poc.com` / `admin1234`
 
 ---
 
-## 🗂️ Structure du projet
+## Documentation
+
+| Fichier | Contenu |
+|---------|---------|
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Avancement des phases (✅ / 🔄 / 🔲) |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Structure du code, modèles, URLs, flux |
+| [docs/SERVICES.md](docs/SERVICES.md) | Couche `services/` : IA, stockage, décorateurs |
+| [docs/PROGRESS.md](docs/PROGRESS.md) | Journal de développement et décisions techniques |
+| [PROJET.md](PROJET.md) | Spécification fonctionnelle complète |
+| [Technologie.md](Technologie.md) | Analyse des outils e-learning existants |
+
+---
+
+## Stack
+
+```
+Backend     : Python 3.13 + Django 5.2
+LLM         : OpenAI GPT-4o
+PDF parsing : PyMuPDF
+Stockage    : Railway Storage Bucket (S3-compatible)
+Base locale : SQLite  |  Base prod : Railway PostgreSQL
+Frontend    : Bootstrap 5.3 + Bootstrap Icons
+Déploiement : Railway (auto-deploy GitHub)
+```
+
+---
+
+## Structure du projet
 
 ```
 .
-├── README.md               # Ce fichier
-├── PROJET.md               # Définition détaillée du projet
+├── README.md
+├── PROJET.md               # Spec fonctionnelle
+├── Technologie.md          # Analyse outils existants
 ├── Cours.md                # Consignes du cours SGC
-├── Technologie.md          # Fiche technologie e-learning IA
-├── docs/                   # Documentation, diaporama, bilan
+├── docs/
+│   ├── ROADMAP.md          # Avancement phases
+│   ├── ARCHITECTURE.md     # Architecture technique
+│   ├── SERVICES.md         # Documentation services/
+│   └── PROGRESS.md         # Journal de dev
+├── backend/                # Application Django
+│   ├── accounts/
+│   ├── groups/
+│   ├── courses/
+│   ├── participations/
+│   ├── services/
+│   └── templates/
 ├── data/                   # Jeux de données (anonymisés)
-├── backend/                # API & logique IA
-└── frontend/               # Interface utilisateur
+└── frontend/               # (réservé)
 ```
 
 ---
 
-## 🚀 Lancer le projet
+## Avancement
 
-> Instructions à compléter lors du développement.
+| Phase | Description | Statut |
+|-------|-------------|--------|
+| 0 | Prérequis comptes & outils | ✅ |
+| 1 | Setup Django & architecture modulaire | ✅ |
+| 2 | Upload PDF + génération IA (slides + quiz) | ✅ |
+| 3 | CRUD web Personnes & Groupes | 🔲 |
+| 4 | Interface responsable de groupe | 🔲 |
+| 5 | Review & édition avant publication | 🔲 |
+| 6 | Flow participation amélioré | 🔲 |
+| 7 | Déploiement Railway | 🔲 |
+| 8 | [BONUS] Chatbot RAG | 🔲 |
+| 9 | Bilan & soutenance | 🔲 |
 
----
-
-## 👤 Auteur
-
-Étudiant M2 MIAGE — Promotion 2025/2026
