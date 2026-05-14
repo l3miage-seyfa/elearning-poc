@@ -38,7 +38,6 @@
         <textarea name="q_{{ q.pk }}_text" rows="2" class="form-control">{{ q.text }}</textarea>
       </div>
       <div class="row g-2 mb-3">
-        {% for letter, val in q.choice_a|default:""|make_list|zip %}{% endfor %}
         <div class="col-md-6">
           <label class="form-label">A)</label>
           <input type="text" name="q_{{ q.pk }}_a" value="{{ q.choice_a }}" class="form-control">

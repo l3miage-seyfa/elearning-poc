@@ -52,7 +52,7 @@ class Group(models.Model):
 
 class GroupMembership(models.Model):
     person = models.ForeignKey('accounts.Person', on_delete=models.CASCADE)
-    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='memberships')
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
