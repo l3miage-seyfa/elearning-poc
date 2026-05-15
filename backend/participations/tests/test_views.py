@@ -118,6 +118,30 @@ class TakeQuizTest(TestCase):
         count = Participation.objects.filter(person=self.person, course=self.course).count()
         self.assertEqual(count, 2)
 
+    def test_attempt_number_increments(self):
+        """Le champ attempt doit s'incrémenter à chaque nouvelle tentative."""
+        self.client.force_login(self.person.user)
+        self.client.post(
+            reverse('participations:take_quiz', kwargs={'course_pk': self.course.pk}),
+            {f'q{self.q1.pk}': 'a', f'q{self.q2.pk}': 'b'}
+        )
+        self.client.post(
+            reverse('participations:take_quiz', kwargs={'course_pk': self.course.pk}),
+            {f'q{self.q1.pk}': 'a', f'q{self.q2.pk}': 'b'}
+        )
+        attempts = list(
+            Participation.objects.filter(person=self.person, course=self.course)
+            .order_by('attempt').values_list('attempt', flat=True)
+        )
+        self.assertEqual(attempts, [1, 2])
+
+    def test_unpublished_course_returns_404(self):
+        self.course.is_published = False
+        self.course.save()
+        self.client.force_login(self.person.user)
+        r = self.client.get(reverse('participations:take_quiz', kwargs={'course_pk': self.course.pk}))
+        self.assertEqual(r.status_code, 404)
+
     def test_answers_stored_in_json(self):
         self.client.force_login(self.person.user)
         self.client.post(
@@ -167,6 +191,11 @@ class MyHistoryTest(TestCase):
         r = self.client.get(reverse('participations:my_history'))
         self.assertEqual(r.status_code, 200)
 
+    def test_history_requires_login(self):
+        r = self.client.get(reverse('participations:my_history'))
+        self.assertNotEqual(r.status_code, 200)
+        self.assertIn('/connexion/', r['Location'])
+
     def test_history_shows_participations(self):
         Participation.objects.create(
             person=self.person, course=self.course,
@@ -181,11 +210,11 @@ class MyHistoryTest(TestCase):
         """Vérifie que attempt_number est bien passé au template."""
         Participation.objects.create(
             person=self.person, course=self.course,
-            score=50.0, completed_at=timezone.now()
+            score=50.0, completed_at=timezone.now(), attempt=1
         )
         Participation.objects.create(
             person=self.person, course=self.course,
-            score=80.0, completed_at=timezone.now()
+            score=80.0, completed_at=timezone.now(), attempt=2
         )
         self.client.force_login(self.person.user)
         r = self.client.get(reverse('participations:my_history'))
@@ -195,3 +224,28 @@ class MyHistoryTest(TestCase):
         self.assertEqual(len(participations), 2)
         attempt_numbers = {p.attempt_number for p in participations}
         self.assertEqual(attempt_numbers, {1, 2})
+
+
+class ResultRedirectTest(TestCase):
+    """La vue `result` doit rediriger vers `result_detail`."""
+
+    def setUp(self):
+        self.client = Client()
+        self.person = make_person('redir@poc.com')
+        self.group = Group.objects.create(name='G5', type='equipe', responsible=self.person)
+        self.course, self.q1, self.q2 = setup_course(self.group, self.person)
+        import json
+        answers = json.dumps({str(self.q1.pk): 'a', str(self.q2.pk): 'b'})
+        self.participation = Participation.objects.create(
+            person=self.person, course=self.course,
+            score=100.0, completed_at=timezone.now(), answers=answers
+        )
+
+    def test_result_redirects_to_result_detail(self):
+        self.client.force_login(self.person.user)
+        r = self.client.get(reverse('participations:result', kwargs={'pk': self.participation.pk}))
+        self.assertRedirects(
+            r,
+            reverse('participations:result_detail', kwargs={'pk': self.participation.pk}),
+            fetch_redirect_response=False
+        )

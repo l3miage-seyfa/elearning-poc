@@ -72,10 +72,12 @@
           </td>
           <td class="text-end">
             {% if p != group.responsible %}
-            <form method="post" action="{% url 'courses:group_remove_member' pk=group.pk person_pk=p.pk %}"
-                  onsubmit="return confirm('Retirer {{ p.user.get_full_name }} du groupe ?')">
+            <form method="post" action="{% url 'courses:group_remove_member' pk=group.pk person_pk=p.pk %}">
               {% csrf_token %}
-              <button type="submit" class="btn btn-sm btn-outline-danger" title="Retirer"><i class="bi bi-person-dash"></i></button>
+              <button type="submit" class="btn btn-sm btn-outline-danger" title="Retirer"
+                      onclick="return confirm('Retirer {{ p.user.get_full_name }} du groupe ?')">
+                <i class="bi bi-person-dash"></i>
+              </button>
             </form>
             {% else %}
             <span class="badge bg-warning text-dark"><i class="bi bi-shield-fill me-1"></i>Resp.</span>
@@ -152,9 +154,13 @@
               <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-rocket-takeoff me-1"></i>Publier</button>
               {% endif %}
             </form>
-            <a href="{% url 'courses:course_delete' pk=course.pk %}" class="btn btn-sm btn-outline-danger ms-auto">
-              <i class="bi bi-trash3 me-1"></i>Supprimer
-            </a>
+            <form method="post" action="{% url 'courses:course_delete' pk=course.pk %}" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-danger ms-auto"
+                      onclick="return confirm('Supprimer le cours « {{ course.title }} » ? Cette action est irréversible.')">
+                <i class="bi bi-trash3 me-1"></i>Supprimer
+              </button>
+            </form>
           </div>
           {% with parts=participations_by_course|get_item:course.pk %}
           {% if parts %}
@@ -228,14 +234,20 @@
           <td class="text-muted">{{ gf.uploaded_at|date:"d/m/Y" }}</td>
           <td>
             <div class="d-flex gap-1 justify-content-end">
+              <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+                      data-bs-target="#fileViewModal{{ gf.pk }}" title="Ouvrir">
+                <i class="bi bi-eye"></i>
+              </button>
               <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal"
                       data-bs-target="#renameModal{{ gf.pk }}" title="Renommer">
                 <i class="bi bi-pencil"></i>
               </button>
-              <form method="post" action="{% url 'courses:group_file_delete' pk=group.pk file_pk=gf.pk %}"
-                    onsubmit="return confirm('Supprimer &laquo; {{ gf.name }} &raquo; ?')">
+              <form method="post" action="{% url 'courses:group_file_delete' pk=group.pk file_pk=gf.pk %}" style="display:inline;">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash3"></i></button>
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer"
+                        onclick="return confirm('Supprimer le fichier {{ gf.name }} ? Cette action est irréversible.')">
+                  <i class="bi bi-trash3"></i>
+                </button>
               </form>
             </div>
           </td>
@@ -304,6 +316,30 @@
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+
+
+
+
+
+
+<!-- Modals voir fichier -->
+{% for gf in group_files %}
+<div class="modal fade" id="fileViewModal{{ gf.pk }}" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title"><i class="bi bi-file-earmark-pdf text-danger me-1"></i>{{ gf.name }}</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0" style="height:80vh;">
+        <iframe src="{% url 'courses:group_file_view' pk=group.pk file_pk=gf.pk %}"
+                class="w-100 h-100 border-0" title="{{ gf.name }}"></iframe>
+      </div>
     </div>
   </div>
 </div>

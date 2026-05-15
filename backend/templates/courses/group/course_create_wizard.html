@@ -1,0 +1,422 @@
+{% extends "base.html" %}
+{% block title %}Créer un cours — {{ group.name }}{% endblock %}
+{% block content %}
+<div class="mb-4">
+  <h1 class="h3 mb-0"><i class="bi bi-journal-plus me-2 text-success"></i>Créer un cours</h1>
+  <div class="text-muted small ms-1 mt-1">{{ group.name }}</div>
+</div>
+
+<form method="post" enctype="multipart/form-data" id="wizardForm">
+  {% csrf_token %}
+
+  <!-- ① Titre -->
+  <div class="card mb-3">
+    <div class="card-header fw-semibold"><i class="bi bi-pencil me-2 text-primary"></i>Titre du cours</div>
+    <div class="card-body">
+      <input type="text" name="title" id="titleInput" class="form-control"
+             placeholder="Rempli automatiquement selon le fichier sélectionné"
+             data-auto="true">
+      {{ existing_names|json_script:"existingNamesData" }}
+    </div>
+  </div>
+
+  <!-- ② Source fichier -->
+  <div class="card mb-3">
+    <div class="card-header fw-semibold d-flex align-items-center justify-content-between">
+      <span><i class="bi bi-file-earmark-pdf me-2 text-danger"></i>Source du contenu</span>
+      <span id="fileCounter" class="badge bg-secondary">0 / 3 sélectionné(s)</span>
+    </div>
+    <div class="card-body">
+
+      <!-- Liste unifiée : fichiers existants + fichiers uploadés -->
+      <div id="fileList" class="row g-2 mb-3">
+        {% for gf in group_files %}
+        <div class="col-md-6 col-lg-4 file-item" data-source="existing" data-id="{{ gf.pk }}" data-name="{{ gf.name|escapejs }}">
+          <label class="d-block border rounded p-2 h-100" style="cursor:pointer;" id="label-existing-{{ gf.pk }}">
+            <div class="d-flex align-items-start gap-2">
+              <input type="checkbox" name="file_ids[]" value="{{ gf.pk }}"
+                     class="form-check-input file-checkbox mt-1 flex-shrink-0">
+              <div class="min-w-0">
+                <div class="fw-semibold text-truncate">
+                  <i class="bi bi-file-earmark-pdf text-danger me-1"></i>{{ gf.name }}
+                </div>
+                <small class="text-muted">{{ gf.uploaded_at|date:"d/m/Y" }}</small>
+              </div>
+            </div>
+          </label>
+        </div>
+        {% endfor %}
+        {% if not group_files %}
+        <div class="col-12" id="emptyMsg">
+          <p class="text-muted small mb-0"><i class="bi bi-info-circle me-1"></i>Aucun fichier dans ce groupe. Uploadez un PDF ci-dessous.</p>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Zone upload -->
+      <input type="file" id="hiddenUploadInput" name="new_file[]" accept=".pdf" multiple style="display:none;">
+      <div id="uploadZone">
+        <button type="button" id="uploadBtn"
+                class="btn btn-outline-danger px-4 py-2" style="border-style:dashed; border-width:2px;">
+          <i class="bi bi-cloud-upload me-2"></i>Uploader des PDF
+        </button>
+        <span class="text-muted small ms-2">Les fichiers seront ajoutés à la bibliothèque du groupe.</span>
+      </div>
+
+      <!-- Spinner upload (masqué par défaut) -->
+      <div id="uploadSpinner" class="mt-2" style="display:none;">
+        <span class="spinner-border spinner-border-sm text-danger me-2"></span>
+        <span class="text-muted small">Chargement en cours…</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ③ Paramètres IA -->
+  <div class="card mb-4">
+    <div class="card-header fw-semibold"><i class="bi bi-cpu me-2 text-primary"></i>Paramètres de génération IA</div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Nombre de slides <span class="text-muted small">(1–20)</span></label>
+          <input type="number" name="nb_slides" class="form-control" value="5" min="1" max="20">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Nombre de questions <span class="text-muted small">(1–20)</span></label>
+          <input type="number" name="nb_questions" class="form-control" value="5" min="1" max="20">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-0 mt-2">
+    <div style="width:15%">
+      <a href="{% url 'courses:responsible_group' pk=group.pk %}" class="btn btn-outline-secondary w-100 py-2">
+        <i class="bi bi-arrow-left me-1"></i>Retour
+      </a>
+    </div>
+    <div style="width:10%"></div>
+    <div style="width:50%">
+      <button type="submit" class="btn btn-success w-100 py-2" id="submitBtn" disabled>
+        <i class="bi bi-stars me-1"></i>Générer le cours
+      </button>
+    </div>
+    <div style="width:25%"></div>
+  </div>
+</form>
+
+<!-- Overlay de génération avec barre de progression -->
+<div id="generatingOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:9999; align-items:center; justify-content:center; flex-direction:column;">
+  <div class="bg-white rounded-4 shadow-lg p-4 mx-3" style="width:100%; max-width:480px;">
+    <div class="text-center mb-3">
+      <i class="bi bi-stars text-success" style="font-size:2rem;"></i>
+      <h5 class="mt-2 mb-0 fw-semibold">Génération en cours…</h5>
+      <small id="overlayTimer" class="text-muted">0:00</small>
+    </div>
+    <div class="progress mb-2" style="height:22px; border-radius:99px;">
+      <div id="progressBar"
+           class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+           role="progressbar" style="width:0%; transition:width .4s ease;">
+        <span id="progressPct" class="fw-semibold" style="font-size:.8rem;">0 %</span>
+      </div>
+    </div>
+    <p id="progressLabel" class="text-muted small text-center mb-3">Initialisation…</p>
+    <div class="text-center">
+      <button type="button" id="cancelGenerateBtn" class="btn btn-sm btn-outline-danger">
+        <i class="bi bi-x-circle me-1"></i>Annuler
+      </button>
+    </div>
+    <p class="text-muted mt-2 mb-0" style="font-size:.75rem; text-align:center;">
+      <i class="bi bi-info-circle me-1"></i>Délai max 3 minutes. GPT-4o prend généralement 30–60 s.
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const MAX = 3;
+  const fileList    = document.getElementById('fileList');
+  const counter     = document.getElementById('fileCounter');
+  const uploadBtn   = document.getElementById('uploadBtn');
+  const hiddenInput = document.getElementById('hiddenUploadInput');
+  const spinner     = document.getElementById('uploadSpinner');
+
+  // ── Compteur ────────────────────────────────────────────────────────────────
+  function updateCounter() {
+    const checked = fileList.querySelectorAll('.file-checkbox:checked').length;
+    counter.textContent = checked + '\u202f/\u202f3 sélectionné(s)';
+    counter.className = 'badge ' + (checked >= MAX ? 'bg-danger' : checked > 0 ? 'bg-success' : 'bg-secondary');
+    fileList.querySelectorAll('.file-checkbox').forEach(cb => {
+      if (!cb.checked) cb.disabled = checked >= MAX;
+    });
+  }
+  // ── Auto-titre ──────────────────────────────────────────────────────────────
+  const titleInput   = document.getElementById('titleInput');
+  const submitBtn    = document.getElementById('submitBtn');
+  let existingNames  = [];
+  try { existingNames = JSON.parse(document.getElementById('existingNamesData').textContent); } catch(_) {}
+
+  function uniqueTitle(base) {
+    // Normalise pour comparaison insensible casse + espaces
+    const norm = s => s.trim().toLowerCase();
+    if (!existingNames.map(norm).includes(norm(base))) return base;
+    let n = 2;
+    while (existingNames.map(norm).includes(norm(base + ' ' + n))) n++;
+    return base + ' ' + n;
+  }
+
+  function autoFillTitle(name) {
+    if (!titleInput.dataset.auto || titleInput.dataset.auto === 'false') return;
+    titleInput.value = uniqueTitle(name);
+  }
+
+  // L'utilisateur tape → on verrouille l'auto-remplissage
+  titleInput.addEventListener('input', () => {
+    titleInput.dataset.auto = titleInput.value.trim() === '' ? 'true' : 'false';
+    refreshSubmitBtn();
+  });
+
+  function refreshSubmitBtn() {
+    const n = fileList.querySelectorAll('.file-checkbox:checked').length;
+    const titleOk = n <= 1 || titleInput.value.trim() !== '';
+    submitBtn.disabled = (n === 0 || !titleOk);
+    if (n > 1 && titleInput.value.trim() === '') {
+      submitBtn.title = 'Saisissez un titre pour continuer';
+    } else {
+      submitBtn.title = '';
+    }
+  }
+
+  fileList.addEventListener('change', updateCounter);
+  fileList.addEventListener('change', () => {
+    // Auto-titre selon les fichiers cochés
+    if (titleInput.dataset.auto === 'true') {
+      const checked = [...fileList.querySelectorAll('.file-checkbox:checked')];
+      if (checked.length === 0) {
+        titleInput.value = '';
+        titleInput.placeholder = 'Rempli automatiquement selon le fichier sélectionné';
+      } else if (checked.length === 1) {
+        const item = checked[0].closest('.file-item');
+        let name = '';
+        if (item.dataset.source === 'existing') {
+          name = item.dataset.name || '';
+        } else {
+          name = item.dataset.name || item.querySelector('input[type=text]')?.value.trim() || '';
+        }
+        if (name) autoFillTitle(name);
+      } else {
+        // Plusieurs fichiers → vider si auto, laisser l'utilisateur saisir
+        titleInput.value = '';
+        titleInput.placeholder = 'Plusieurs fichiers — saisissez un titre';
+      }
+    }
+    // Appel APRÈS la mise à jour du titre pour que la condition soit correcte
+    refreshSubmitBtn();
+  });
+  updateCounter();
+  refreshSubmitBtn();
+
+  // ── Upload ──────────────────────────────────────────────────────────────────
+  uploadBtn.addEventListener('click', () => hiddenInput.click());
+
+  hiddenInput.addEventListener('change', function () {
+    const files = Array.from(this.files);
+    if (!files.length) return;
+    spinner.style.display = '';
+    uploadBtn.disabled = true;
+    setTimeout(() => {
+      const emptyMsg = document.getElementById('emptyMsg');
+      if (emptyMsg) emptyMsg.remove();
+      files.forEach(file => {
+        const uid = 'new_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+        const defaultName = file.name.replace(/\.pdf$/i, '');
+        const realInput = document.createElement('input');
+        realInput.type = 'file'; realInput.name = 'new_file[]';
+        realInput.style.display = 'none'; realInput.id = 'ri_' + uid;
+        const dt = new DataTransfer(); dt.items.add(file); realInput.files = dt.files;
+        document.getElementById('wizardForm').appendChild(realInput);
+        const nameInput = document.createElement('input');
+        nameInput.type = 'hidden'; nameInput.name = 'new_file_name[]';
+        nameInput.value = defaultName; nameInput.id = 'ni_' + uid;
+        document.getElementById('wizardForm').appendChild(nameInput);
+        const col = document.createElement('div');
+        col.className = 'col-md-6 col-lg-4 file-item';
+        col.dataset.source = 'new'; col.dataset.uid = uid; col.dataset.name = defaultName;
+        col.innerHTML = `
+          <div class="border border-warning rounded p-2 h-100 bg-warning-subtle">
+            <div class="d-flex align-items-start gap-2">
+              <input type="checkbox" name="new_file_selected[]" value="${uid}"
+                     class="form-check-input file-checkbox mt-1 flex-shrink-0" checked>
+              <div class="min-w-0 flex-grow-1">
+                <div class="fw-semibold d-flex align-items-center gap-1">
+                  <i class="bi bi-file-earmark-pdf text-warning flex-shrink-0"></i>
+                  <input type="text" class="form-control form-control-sm"
+                         value="${defaultName}"
+                         oninput="document.getElementById('ni_${uid}').value=this.value; this.closest('.file-item').dataset.name=this.value;">
+                </div>
+                <small class="text-muted text-truncate d-block">${file.name}</small>
+              </div>
+              <button type="button" class="btn btn-sm btn-danger flex-shrink-0"
+                      onclick="removeNew('${uid}')" title="Supprimer">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+          </div>`;
+        fileList.appendChild(col);
+      });
+      spinner.style.display = 'none';
+      uploadBtn.disabled = false;
+      hiddenInput.value = '';
+      // Déclencher change pour mettre à jour compteur + titre + bouton
+      fileList.dispatchEvent(new Event('change'));
+      updateCounter();
+    }, 600);
+  });
+
+  window.removeNew = function(uid) {
+    const col = fileList.querySelector(`[data-uid="${uid}"]`);
+    if (col) col.remove();
+    ['ri_', 'ni_'].forEach(p => { const el = document.getElementById(p + uid); if (el) el.remove(); });
+    updateCounter();
+  };
+
+  // ── Barre de progression ────────────────────────────────────────────────────
+  const STEPS = [
+    { label: 'Lecture des PDFs…',         until: 12 },
+    { label: 'Analyse du contenu…',        until: 25 },
+    { label: 'Génération des slides…',     until: 62 },
+    { label: 'Génération des questions…',  until: 90 },
+    { label: 'Sauvegarde en base…',        until: 98 },
+  ];
+
+  function setProgress(pct, label) {
+    const bar = document.getElementById('progressBar');
+    const pctEl = document.getElementById('progressPct');
+    const lblEl = document.getElementById('progressLabel');
+    const p = Math.round(pct);
+    bar.style.width = p + '%';
+    pctEl.textContent = p + ' %';
+    if (label) lblEl.textContent = label;
+  }
+
+  function startProgressSim() {
+    let progress = 0;
+    let stepIdx  = 0;
+    const interval = setInterval(() => {
+      if (stepIdx >= STEPS.length) return;
+      const step = STEPS[stepIdx];
+      // Avance vers le plafond de l'étape en cours
+      const gap   = step.until - progress;
+      const delta = Math.max(0.2, gap * 0.04);   // ralentit à l'approche du plafond
+      progress = Math.min(step.until, progress + delta);
+      setProgress(progress, step.label);
+      if (progress >= step.until) stepIdx++;
+    }, 150);
+    return interval;
+  }
+
+  // ── Soumission AJAX ─────────────────────────────────────────────────────────
+  const TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
+
+  function resetOverlay() {
+    const overlay = document.getElementById('generatingOverlay');
+    overlay.style.display = 'none';
+    document.getElementById('submitBtn').disabled = false;
+    // Réactiver les inputs désactivés
+    fileList.querySelectorAll('[data-source="new"]').forEach(col => {
+      const uid = col.dataset.uid;
+      ['ri_', 'ni_'].forEach(p => { const el = document.getElementById(p + uid); if (el) el.disabled = false; });
+    });
+  }
+
+  document.getElementById('wizardForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const n1 = fileList.querySelectorAll('input[name="file_ids[]"]:checked').length;
+    const n2 = fileList.querySelectorAll('input[name="new_file_selected[]"]:checked').length;
+    if (n1 + n2 === 0) {
+      alert('Veuillez sélectionner au moins un fichier.');
+      return;
+    }
+
+    // Désactiver les inputs des fichiers non cochés avant envoi
+    fileList.querySelectorAll('[data-source="new"]').forEach(col => {
+      const cb = col.querySelector('.file-checkbox');
+      if (cb && !cb.checked) {
+        const uid = col.dataset.uid;
+        ['ri_', 'ni_'].forEach(p => { const el = document.getElementById(p + uid); if (el) el.disabled = true; });
+      }
+    });
+
+    // Afficher l'overlay
+    document.getElementById('submitBtn').disabled = true;
+    const overlay = document.getElementById('generatingOverlay');
+    overlay.style.display = 'flex';
+    setProgress(0, 'Initialisation…');
+
+    const interval  = startProgressSim();
+    const controller = new AbortController();
+
+    // ── Timer affiché ──
+    const startTime = Date.now();
+    const timerEl   = document.getElementById('overlayTimer');
+    const timerInterval = setInterval(() => {
+      const s = Math.floor((Date.now() - startTime) / 1000);
+      timerEl.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+    }, 1000);
+
+    // ── Timeout automatique 3 min ──
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, TIMEOUT_MS);
+
+    // ── Bouton Annuler ──
+    const cancelBtn = document.getElementById('cancelGenerateBtn');
+    const onCancel = () => controller.abort();
+    cancelBtn.addEventListener('click', onCancel, { once: true });
+
+    function cleanup() {
+      clearInterval(interval);
+      clearInterval(timerInterval);
+      clearTimeout(timeoutId);
+      cancelBtn.removeEventListener('click', onCancel);
+    }
+
+    try {
+      const formData = new FormData(this);
+      const resp = await fetch(this.action || window.location.href, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        signal: controller.signal,
+      });
+      const json = await resp.json();
+      cleanup();
+
+      if (json.redirect) {
+        setProgress(100, 'Cours généré ! Redirection…');
+        setTimeout(() => { window.location.href = json.redirect; }, 600);
+      } else {
+        resetOverlay();
+        alert(json.error || 'Une erreur est survenue.');
+      }
+    } catch (err) {
+      cleanup();
+      resetOverlay();
+      if (err.name === 'AbortError') {
+        const elapsed = Math.round((Date.now() - startTime) / 1000);
+        if (elapsed >= TIMEOUT_MS / 1000 - 2) {
+          alert('Délai dépassé (3 minutes). La génération a pris trop de temps. Réessayez avec moins de fichiers ou moins de slides.');
+        } else {
+          alert('Génération annulée.');
+        }
+      } else {
+        alert('Erreur réseau : ' + err.message);
+      }
+    }
+  });
+})();
+</script>
+{% endblock %}

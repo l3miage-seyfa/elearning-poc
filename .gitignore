@@ -36,3 +36,7 @@ data/private/
 # Logs
 *.log
 logs/
+
+# Documentation interne (Copilot / usage local uniquement — non exposée sur git)
+docs/
+.github/

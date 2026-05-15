@@ -55,6 +55,38 @@ class CourseModelTest(TestCase):
         questions = list(self.course.questions.all())
         self.assertEqual(questions[0].order, 1)
 
+    def test_slide_str(self):
+        s = Slide.objects.create(course=self.course, order=1, content='Bonjour monde')
+        self.assertIn('Slide 1', str(s))
+
+    def test_question_str(self):
+        q = Question.objects.create(
+            course=self.course, order=1, text='Quoi ?',
+            choice_a='A', choice_b='B', choice_c='C', choice_d='D', correct_answer='a'
+        )
+        self.assertIn('Q1', str(q))
+
+
+class CourseUniqueTitleTest(TestCase):
+    """Vérifie la contrainte unique_together (title, group) du modèle Course."""
+
+    def setUp(self):
+        self.person = make_person('admin_unique@poc.com', is_admin=True)
+        self.group = Group.objects.create(name='GU', type='equipe', responsible=self.person)
+        self.other_group = Group.objects.create(name='Other', type='equipe', responsible=self.person)
+
+    def test_duplicate_title_in_same_group_raises(self):
+        from django.db import IntegrityError
+        Course.objects.create(title='Cours A', group=self.group, created_by=self.person)
+        with self.assertRaises(IntegrityError):
+            Course.objects.create(title='Cours A', group=self.group, created_by=self.person)
+
+    def test_same_title_in_different_groups_allowed(self):
+        Course.objects.create(title='Cours A', group=self.group, created_by=self.person)
+        # Pas d'exception attendue
+        Course.objects.create(title='Cours A', group=self.other_group, created_by=self.person)
+        self.assertEqual(Course.objects.filter(title='Cours A').count(), 2)
+
 
 class CoursePublishDeleteTest(TestCase):
     def setUp(self):

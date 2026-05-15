@@ -8,10 +8,10 @@ def login_and_person_required(view_func):
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
-            return redirect('accounts:login')
+            return redirect('login')
         if not hasattr(request.user, 'person'):
             messages.error(request, "Votre compte n'a pas de profil Person associé.")
-            return redirect('accounts:login')
+            return redirect('login')
         return view_func(request, *args, **kwargs)
     return wrapper
 
@@ -21,7 +21,7 @@ def admin_required(view_func):
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
-            return redirect('accounts:login')
+            return redirect('login')
         if not hasattr(request.user, 'person') or not request.user.person.is_admin:
             messages.error(request, "Accès réservé aux administrateurs.")
             return redirect('accounts:dashboard')
@@ -34,10 +34,10 @@ def responsible_required(view_func):
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
-            return redirect('accounts:login')
+            return redirect('login')
         person = getattr(request.user, 'person', None)
         if person is None:
-            return redirect('accounts:login')
+            return redirect('login')
         if not person.is_admin and not person.managed_groups.exists():
             messages.error(request, "Accès réservé aux responsables de groupe.")
             return redirect('accounts:dashboard')

@@ -102,8 +102,8 @@
           </a>
         </div>
         <div class="col-6">
-          <button type="button" class="btn btn-publier-custom w-100"
-                  data-bs-toggle="modal" data-bs-target="#publishModal">
+          <button type="submit" class="btn btn-publier-custom w-100"
+                  onclick="document.getElementById('form-action').value='publish'; return confirm('Sauvegarder et publier \u00ab {{ course.title }} \u00bb ? Il sera visible par les membres du groupe.')">
             <i class="bi bi-rocket-takeoff me-1"></i>Publier
           </button>
         </div>
@@ -113,36 +113,7 @@
   </div>
 </form>
 
-<!-- Modal confirmer publication -->
-<div class="modal fade" id="publishModal" tabindex="-1">
-  <div class="modal-dialog modal-sm">
-    <div class="modal-content border-success">
-      <div class="modal-header py-2 bg-success text-white">
-        <h6 class="modal-title"><i class="bi bi-rocket-takeoff me-1"></i>Publier le cours</h6>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <p class="mb-1">Sauvegarder les slides et publier <strong>{{ course.title }}</strong> ?</p>
-        <p class="text-muted small mb-0"><i class="bi bi-info-circle me-1"></i>Le cours sera visible par les membres du groupe.</p>
-      </div>
-      <div class="modal-footer py-2">
-        <button type="button" class="btn btn-success btn-sm" id="confirmPublishBtn">
-          <i class="bi bi-rocket-takeoff me-1"></i>Confirmer
-        </button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <script>
-(function () {
-  // Confirmation publication
-  document.getElementById('confirmPublishBtn').addEventListener('click', function () {
-    document.getElementById('form-action').value = 'publish';
-    document.getElementById('slides-form').submit();
-  });
-})();
 (function () {
   const inputs = document.querySelectorAll('.slide-input');
   const btnSave = document.getElementById('btn-save');

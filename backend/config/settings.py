@@ -109,9 +109,9 @@ USE_TZ = True
 
 
 # Auth
-LOGIN_URL = '/login/'
+LOGIN_URL = '/connexion/'
 LOGIN_REDIRECT_URL = '/'
-LOGOUT_REDIRECT_URL = '/login/'
+LOGOUT_REDIRECT_URL = '/connexion/'
 
 # Fichiers statiques
 STATIC_URL = '/static/'

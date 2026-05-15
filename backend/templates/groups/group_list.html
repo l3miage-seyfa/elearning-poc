@@ -38,9 +38,13 @@
             <a href="{% url 'groups:group_edit' group.pk %}" class="btn btn-sm btn-outline-secondary">
               <i class="bi bi-pencil"></i>
             </a>
-            <a href="{% url 'groups:group_delete' group.pk %}" class="btn btn-sm btn-outline-danger">
-              <i class="bi bi-trash"></i>
-            </a>
+            <form method="post" action="{% url 'groups:group_delete' group.pk %}" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-danger"
+                      onclick="return confirm('Supprimer le groupe \u00ab {{ group.name }} \u00bb ? Tous ses cours seront supprim\u00e9s.')">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
           </td>
         </tr>
         {% empty %}

@@ -31,7 +31,7 @@ def login_view(request):
 @login_required
 def logout_view(request):
     logout(request)
-    return redirect('accounts:login')
+    return redirect('login')
 
 
 @login_required
@@ -43,7 +43,7 @@ def dashboard(request):
             return redirect('courses:admin_dashboard')
         messages.warning(request, "Votre compte n'a pas de profil Person.")
         logout(request)
-        return redirect('accounts:login')
+        return redirect('login')
 
     if person.is_admin:
         return redirect('courses:admin_dashboard')

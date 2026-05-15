@@ -25,10 +25,11 @@ from accounts import views as account_views
 urlpatterns = [
     path('healthz/', lambda request: HttpResponse('ok'), name='healthz'),
     path('django-admin/', admin.site.urls),
-    path('login/', account_views.login_view, name='login'),
+    path('connexion/', account_views.login_view, name='login'),
+    path('deconnexion/', account_views.logout_view, name='logout'),
     path('', lambda request: redirect('courses:admin_dashboard') if request.user.is_authenticated and getattr(getattr(request.user, 'person', None), 'is_admin', False) else redirect('courses:member_courses'), name='home'),
-    path('accounts/', include('accounts.urls')),
+    path('comptes/', include('accounts.urls')),
     path('groupes/', include('groups.urls')),
-    path('cours/', include('courses.urls')),
-    path('participations/', include('participations.urls')),
+    path('', include('courses.urls')),
+    path('', include('participations.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

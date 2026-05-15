@@ -13,7 +13,6 @@ class Course(models.Model):
         related_name='created_courses',
         verbose_name="Créé par"
     )
-    pdf_file = models.CharField(max_length=500, blank=True, verbose_name="Fichier PDF (clé storage)")
     nb_slides = models.PositiveIntegerField(default=5, verbose_name="Nombre de slides souhaité")
     nb_questions = models.PositiveIntegerField(default=5, verbose_name="Nombre de questions souhaité")
     is_published = models.BooleanField(default=False, verbose_name="Publié")
@@ -27,6 +26,7 @@ class Course(models.Model):
         verbose_name = "Cours"
         verbose_name_plural = "Cours"
         ordering = ['-created_at']
+        unique_together = [('title', 'group')]
 
 
 class Slide(models.Model):

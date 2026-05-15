@@ -20,17 +20,17 @@ class LoginViewTest(TestCase):
         self.user = make_user('alice@poc.com')
 
     def test_login_page_get(self):
-        r = self.client.get(reverse('accounts:login'))
+        r = self.client.get(reverse('login'))
         self.assertEqual(r.status_code, 200)
 
     def test_login_success_redirects(self):
-        r = self.client.post(reverse('accounts:login'), {
+        r = self.client.post(reverse('login'), {
             'username': 'alice@poc.com', 'password': 'pass1234'
         })
         self.assertIn(r.status_code, [200, 302])
 
     def test_login_wrong_password(self):
-        r = self.client.post(reverse('accounts:login'), {
+        r = self.client.post(reverse('login'), {
             'username': 'alice@poc.com', 'password': 'wrong'
         })
         self.assertEqual(r.status_code, 200)  # reste sur la page login
@@ -79,3 +79,66 @@ class PersonCRUDTest(TestCase):
             'is_admin': False,
         })
         self.assertIn(r.status_code, [200, 302])
+
+    def test_person_delete(self):
+        target = make_user('target@poc.com')
+        pk = target.person.pk
+        self.client.force_login(self.admin)
+        self.client.post(reverse('accounts:person_delete', args=[pk]))
+        self.assertFalse(User.objects.filter(email='target@poc.com').exists())
+
+    def test_cannot_delete_self(self):
+        self.client.force_login(self.admin)
+        r = self.client.post(reverse('accounts:person_delete', args=[self.admin.person.pk]))
+        self.assertEqual(r.status_code, 302)
+        self.assertTrue(User.objects.filter(pk=self.admin.pk).exists())
+
+
+class LogoutTest(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = make_user('logoutuser@poc.com')
+
+    def test_logout_redirects_to_login(self):
+        self.client.force_login(self.user)
+        r = self.client.get('/deconnexion/')
+        self.assertRedirects(r, '/connexion/')
+
+    def test_unauthenticated_redirect_to_login(self):
+        r = self.client.get('/mes-cours/')
+        self.assertIn('/connexion/', r['Location'])
+
+
+class PersonEditTest(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.admin = make_user('edit_admin@poc.com', is_admin=True)
+        self.target = make_user('edit_target@poc.com', first='Alice', last='Dupont')
+
+    def test_person_edit_get(self):
+        self.client.force_login(self.admin)
+        r = self.client.get(reverse('accounts:person_edit', args=[self.target.person.pk]))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'Alice')
+
+    def test_person_edit_post_updates_name(self):
+        self.client.force_login(self.admin)
+        r = self.client.post(
+            reverse('accounts:person_edit', args=[self.target.person.pk]),
+            {
+                'first_name': 'Bob',
+                'last_name': 'Martin',
+                'email': 'edit_target@poc.com',
+                'is_admin': '',
+                'password': '',
+            }
+        )
+        self.assertIn(r.status_code, [200, 302])
+        self.target.refresh_from_db()
+        self.assertEqual(self.target.first_name, 'Bob')
+
+    def test_non_admin_cannot_edit(self):
+        normal = make_user('non_admin_edit@poc.com', is_admin=False)
+        self.client.force_login(normal)
+        r = self.client.get(reverse('accounts:person_edit', args=[self.target.person.pk]))
+        self.assertNotEqual(r.status_code, 200)

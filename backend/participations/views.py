@@ -24,9 +24,11 @@ def take_quiz(request, course_pk):
 
         score = (correct / len(questions) * 100) if questions else 0
         import json
+        attempt = Participation.objects.filter(person=person, course=course).count() + 1
         participation = Participation.objects.create(
             person=person,
             course=course,
+            attempt=attempt,
             score=round(score, 1),
             completed_at=timezone.now(),
             answers=json.dumps(answers),
@@ -81,19 +83,13 @@ def result_detail(request, pk):
 def my_history(request):
     """Historique complet des participations de la personne connectée."""
     person = request.user.person
-    participations = list(Participation.objects.filter(
+    participations = Participation.objects.filter(
         person=person, score__isnull=False
-    ).select_related('course__group').order_by('course_id', 'completed_at'))
+    ).select_related('course__group').order_by('-completed_at')
 
-    # Numérotation des tentatives par cours
-    from collections import defaultdict
-    counters = defaultdict(int)
+    # attempt_number : utilise le champ BDD (renseigné depuis take_quiz)
     for p in participations:
-        counters[p.course_id] += 1
-        p.attempt_number = counters[p.course_id]
-
-    # Tri final par date décroissante pour l'affichage
-    participations.sort(key=lambda p: p.completed_at or p.pk, reverse=True)
+        p.attempt_number = p.attempt
 
     return render(request, 'participations/my_history.html', {'participations': participations})
 
