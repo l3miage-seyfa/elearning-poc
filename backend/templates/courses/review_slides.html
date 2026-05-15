@@ -1,23 +1,36 @@
 {% extends "base.html" %}
 {% block title %}Modifier les slides — {{ course.title }}{% endblock %}
 {% block content %}
-<div class="d-flex align-items-center gap-2 mb-4">
+<div class="d-flex align-items-center gap-2 mb-3">
   <i class="bi bi-file-slides fs-3 text-primary"></i>
   <div>
     <h1 class="h3 mb-0">Modifier les slides</h1>
-    <small class="text-muted">{{ course.title }} — étape 1/2</small>
+    <small class="text-muted">{{ course.title }}</small>
   </div>
+  <span class="ms-auto badge bg-secondary fs-6">{{ slides|length }} slides</span>
 </div>
 
-<div class="card mb-3">
-  <div class="card-body py-2 px-3 d-flex gap-3">
-    <span class="badge bg-secondary fs-6">{{ slides|length }} slides</span>
-    <span class="text-muted small">Modifiez le contenu de chaque slide, puis cliquez sur <strong>Sauvegarder & continuer</strong>.</span>
+{% if messages %}
+  {% for m in messages %}
+  <div class="alert alert-{{ m.tags|default:'info' }} alert-dismissible fade show py-2" role="alert">
+    {{ m }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
+  {% endfor %}
+{% endif %}
+
+<!-- Navigation étapes -->
+<div class="d-flex gap-2 mb-4">
+  <span class="badge bg-primary px-3 py-2 fs-6"><i class="bi bi-1-circle-fill me-1"></i>Slides</span>
+  <span class="text-muted align-self-center">›</span>
+  <a href="{% url 'courses:review_questions' pk=course.pk %}" class="badge bg-light text-dark border px-3 py-2 fs-6 text-decoration-none">
+    <i class="bi bi-2-circle me-1"></i>Questions
+  </a>
 </div>
 
-<form method="post">
+<form method="post" id="slides-form">
   {% csrf_token %}
+  <input type="hidden" name="action" id="form-action" value="save">
+
   {% for slide in slides %}
   <div class="card mb-3">
     <div class="card-header d-flex align-items-center gap-2 py-2">
@@ -28,31 +41,63 @@
       <textarea
         name="slide_{{ slide.pk }}"
         rows="5"
-        class="form-control font-monospace"
+        class="form-control font-monospace slide-input"
+        data-original="{{ slide.content|escapejs }}"
       >{{ slide.content }}</textarea>
     </div>
   </div>
   {% endfor %}
 
-  <div class="d-flex gap-2">
-    <button type="submit" class="btn btn-primary">
-      <i class="bi bi-arrow-right-circle me-1"></i>Sauvegarder &amp; continuer vers les questions
+  <!-- Ligne 1 : Sauvegarder | Aperçu slides -->
+  <div class="d-flex gap-2 mb-2">
+    <button type="submit" id="btn-save" class="btn btn-primary" disabled
+            onclick="document.getElementById('form-action').value='save'">
+      <i class="bi bi-floppy me-1"></i>Sauvegarder
     </button>
-    <a href="{% url 'courses:review_questions' pk=course.pk %}" class="btn btn-outline-secondary">
-      <i class="bi bi-skip-forward me-1"></i>Passer (sans sauvegarder)
-    </a>
-    <a href="{% url 'participations:slide_reader' course.pk %}?preview=1" class="btn btn-outline-primary ms-auto">
+    <a href="{% url 'participations:slide_reader' course.pk %}?preview=1"
+       class="btn btn-outline-primary" target="_blank">
       <i class="bi bi-play-circle me-1"></i>Aperçu slides
     </a>
   </div>
+
+  <!-- Ligne 2 : < Sortir | Questions > -->
+  <div class="d-flex gap-2 mb-2">
+    <a href="{% url 'courses:responsible_group' pk=course.group.pk %}"
+       class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Sortir
+    </a>
+    <a href="{% url 'courses:review_questions' pk=course.pk %}"
+       class="btn btn-outline-secondary ms-auto">
+      Questions <i class="bi bi-arrow-right ms-1"></i>
+    </a>
+  </div>
+
+  <!-- Ligne 3 : Publier -->
+  <div class="d-flex gap-2 align-items-center">
+    <button type="submit" class="btn btn-success"
+            onclick="document.getElementById('form-action').value='publish';
+                     return confirm('Sauvegarder les slides et publier le cours ?')">
+      <i class="bi bi-rocket-takeoff me-1"></i>Publier
+    </button>
+    {% if course.is_published %}
+      <span class="badge bg-success ms-2"><i class="bi bi-check-circle me-1"></i>Déjà publié</span>
+    {% else %}
+      <span class="badge bg-warning text-dark ms-2">Non publié</span>
+    {% endif %}
+  </div>
 </form>
 
-<hr class="my-4">
-<div class="d-flex justify-content-end">
-  <a href="{% url 'courses:responsible_group' pk=course.group.pk %}"
-     class="btn btn-outline-danger"
-     onclick="return confirm('Abandonner les modifications ? Les slides non sauvegardées seront perdues.')">  
-    <i class="bi bi-x-circle me-1"></i>Abandonner et retourner au groupe
-  </a>
-</div>
-{% endblock %}
+<script>
+(function () {
+  const inputs = document.querySelectorAll('.slide-input');
+  const btnSave = document.getElementById('btn-save');
+  function checkChanges() {
+    let changed = false;
+    inputs.forEach(function (el) {
+      if (el.value !== el.dataset.original) changed = true;
+    });
+    btnSave.disabled = !changed;
+  }
+  inputs.forEach(function (el) { el.addEventListener('input', checkChanges); });
+})();
+</script>

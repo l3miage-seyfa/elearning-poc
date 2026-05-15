@@ -555,14 +555,20 @@ def review_slides(request, pk):
     slides = list(course.slides.order_by('order'))
 
     if request.method == 'POST':
+        action = request.POST.get('action', 'save')
         with transaction.atomic():
             for slide in slides:
                 new_content = request.POST.get(f'slide_{slide.pk}', '').strip()
                 if new_content != slide.content:
                     slide.content = new_content
                     slide.save()
+        if action == 'publish':
+            course.is_published = True
+            course.save()
+            messages.success(request, f"Slides sauvegardées et cours « {course.title} » publié.")
+            return redirect('courses:responsible_group', pk=course.group.pk)
         messages.success(request, "Slides sauvegardées.")
-        return redirect('courses:review_questions', pk=course.pk)
+        return redirect('courses:review_slides', pk=course.pk)
 
     return render(request, 'courses/review_slides.html', {
         'course': course, 'slides': slides
@@ -581,6 +587,7 @@ def review_questions(request, pk):
     questions = list(course.questions.order_by('order'))
 
     if request.method == 'POST':
+        action = request.POST.get('action', 'save')
         with transaction.atomic():
             for q in questions:
                 q.text           = request.POST.get(f'q_{q.pk}_text', '').strip()
@@ -591,10 +598,37 @@ def review_questions(request, pk):
                 q.correct_answer = request.POST.get(f'q_{q.pk}_correct', 'a')
                 q.explanation    = request.POST.get(f'q_{q.pk}_explanation', '').strip()
                 q.save()
+        if action == 'publish':
+            course.is_published = True
+            course.save()
+            messages.success(request, f"Questions sauvegardées et cours « {course.title} » publié.")
+            return redirect('courses:responsible_group', pk=course.group.pk)
         messages.success(request, "Questions sauvegardées.")
         return redirect('courses:review_questions', pk=course.pk)
 
     return render(request, 'courses/review_questions.html', {
+        'course': course, 'questions': questions
+    })
+
+
+@login_and_person_required
+def preview_questions(request, pk):
+    """Aperçu lecture seule des questions (non interactif)."""
+    course = get_object_or_404(Course, pk=pk)
+    person = request.user.person
+    if not _can_edit_course(person, course):
+        from django.http import Http404
+        raise Http404
+    questions = list(course.questions.order_by('order'))
+    # Ajoute choices_display à chaque question pour le template
+    for q in questions:
+        q.choices_display = [
+            ('a', q.choice_a),
+            ('b', q.choice_b),
+            ('c', q.choice_c),
+            ('d', q.choice_d),
+        ]
+    return render(request, 'courses/preview_questions.html', {
         'course': course, 'questions': questions
     })
 

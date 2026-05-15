@@ -8,6 +8,7 @@ urlpatterns = [
     path('mes-cours/', views.member_courses, name='member_courses'),
     path('<int:pk>/review/slides/', views.review_slides, name='review_slides'),
     path('<int:pk>/review/questions/', views.review_questions, name='review_questions'),
+    path('<int:pk>/review/questions/apercu/', views.preview_questions, name='preview_questions'),
     path('<int:pk>/publier/', views.course_publish, name='course_publish'),
     path('<int:pk>/supprimer/', views.course_delete, name='course_delete'),
     path('groupe/<int:pk>/responsable/', views.responsible_group_detail, name='responsible_group'),
