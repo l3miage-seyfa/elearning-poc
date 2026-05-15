@@ -407,8 +407,18 @@ def course_create_wizard(request, pk):
                     'group': group, 'group_files': group_files
                 })
             gf = get_object_or_404(GroupFile, pk=file_id, group=group)
-            with gf.file.open('rb') as f:
-                pdf_bytes = f.read()
+            try:
+                with gf.file.open('rb') as f:
+                    pdf_bytes = f.read()
+            except (FileNotFoundError, OSError):
+                messages.error(
+                    request,
+                    f"Le fichier « {gf.name} » n'est plus disponible sur le serveur. "
+                    "Veuillez le re-uploader via « Nouveau fichier »."
+                )
+                return render(request, 'courses/course_create_wizard.html', {
+                    'group': group, 'group_files': group_files
+                })
             file_name = gf.name
 
         if not title:
