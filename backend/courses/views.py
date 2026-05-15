@@ -663,6 +663,6 @@ def course_delete(request, pk):
         messages.success(request, f"Cours « {title} » supprimé.")
         if person.is_admin:
             return redirect('courses:admin_dashboard')
-        return redirect('groups:responsible_group', pk=course.group_id)
+        return redirect('courses:responsible_group', pk=course.group_id)
     return render(request, 'courses/course_confirm_delete.html', {'course': course})
 
