@@ -1,14 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Modifier les questions — {{ course.title }}{% endblock %}
 {% block content %}
-<div class="d-flex align-items-center gap-2 mb-3">
-  <i class="bi bi-patch-question fs-3 text-warning"></i>
-  <div>
-    <h1 class="h3 mb-0">Modifier les questions</h1>
-    <small class="text-muted">{{ course.title }}</small>
-  </div>
-  <span class="ms-auto badge bg-warning text-dark fs-6">{{ questions|length }} questions</span>
-</div>
 
 {% if messages %}
   {% for m in messages %}
@@ -18,15 +10,6 @@
   {% endfor %}
 {% endif %}
 
-<!-- Navigation étapes -->
-<div class="d-flex gap-2 mb-4">
-  <a href="{% url 'courses:review_slides' pk=course.pk %}" class="badge bg-light text-dark border px-3 py-2 fs-6 text-decoration-none">
-    <i class="bi bi-1-circle me-1"></i>Slides
-  </a>
-  <span class="text-muted align-self-center">›</span>
-  <span class="badge bg-warning text-dark px-3 py-2 fs-6"><i class="bi bi-2-circle-fill me-1"></i>Questions</span>
-</div>
-
 <form method="post" id="questions-form">
   {% csrf_token %}
   <input type="hidden" name="action" id="form-action" value="save">
@@ -34,10 +17,12 @@
   {% for q in questions %}
   <div class="card mb-4">
     <div class="card-header d-flex align-items-center gap-2 py-2">
-      <i class="bi bi-question-circle text-warning"></i>
-      <strong>Question {{ q.order }}</strong>
+      <i class="bi bi-patch-question text-warning"></i>
+      <strong>Modifier questions</strong>
+      <span class="ms-auto fw-normal text-muted">{{ course.title }}</span>
     </div>
     <div class="card-body">
+      <div class="fw-semibold mb-2 text-secondary small">Question {{ q.order }}</div>
       <div class="mb-3">
         <label class="form-label fw-semibold">Énoncé</label>
         <textarea name="q_{{ q.pk }}_text" rows="2" class="form-control q-input"
@@ -80,43 +65,40 @@
   </div>
   {% endfor %}
 
-  <!-- Ligne 1 : Sauvegarder | Aperçu questions -->
+  <hr class="my-3">
+
+  <!-- Navigation slides > questions -->
   <div class="d-flex gap-2 mb-2">
-    <button type="submit" id="btn-save" class="btn btn-warning text-dark" disabled
+    <a href="{% url 'courses:review_slides' pk=course.pk %}" class="btn btn-sm btn-outline-secondary">Slides</a>
+    <span class="align-self-center text-muted">›</span>
+    <span class="btn btn-sm btn-warning text-dark disabled">Questions</span>
+  </div>
+
+  <!-- Sauvegarder | Aperçu -->
+  <div class="d-flex gap-2 mb-2">
+    <button type="submit" id="btn-save" class="btn btn-warning text-dark flex-fill" disabled
             onclick="document.getElementById('form-action').value='save'">
-      <i class="bi bi-floppy me-1"></i>Sauvegarder
+      Sauvegarder
     </button>
     <a href="{% url 'courses:preview_questions' pk=course.pk %}"
-       class="btn btn-outline-warning" target="_blank">
-      <i class="bi bi-eye me-1"></i>Aperçu questions
+       class="btn btn-outline-warning flex-fill" target="_blank">
+      Aperçu
     </a>
   </div>
 
-  <!-- Ligne 2 : < Sortir (rouge) | Slides > -->
-  <div class="d-flex gap-2 mb-2">
+  <!-- Sortir (rouge) | Publier (vert) -->
+  <div class="d-flex gap-2">
     <a href="{% url 'courses:responsible_group' pk=course.group.pk %}"
-       class="btn btn-outline-danger">
-      <i class="bi bi-arrow-left me-1"></i>Sortir
+       class="btn btn-danger flex-fill">
+      Sortir
     </a>
-    <a href="{% url 'courses:review_slides' pk=course.pk %}"
-       class="btn btn-outline-secondary ms-auto">
-      <i class="bi bi-arrow-left me-1"></i>Slides
-    </a>
+    <button type="submit" class="btn btn-success flex-fill"
+            onclick="document.getElementById('form-action').value='publish';
+                     return confirm('Sauvegarder et publier le cours ?')">
+      Publier
+    </button>
   </div>
 
-  <!-- Ligne 3 : Publier -->
-  <div class="d-flex gap-2 align-items-center">
-    <button type="submit" class="btn btn-success"
-            onclick="document.getElementById('form-action').value='publish';
-                     return confirm('Sauvegarder les questions et publier le cours ?')">
-      <i class="bi bi-rocket-takeoff me-1"></i>Publier
-    </button>
-    {% if course.is_published %}
-      <span class="badge bg-success ms-2"><i class="bi bi-check-circle me-1"></i>Déjà publié</span>
-    {% else %}
-      <span class="badge bg-warning text-dark ms-2">Non publié</span>
-    {% endif %}
-  </div>
 </form>
 
 <script>
