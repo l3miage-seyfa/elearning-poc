@@ -6,6 +6,7 @@ class Group(models.Model):
         ('direction', 'Direction'),
         ('equipe', 'Équipe'),
         ('projet', 'Projet'),
+        ('communaute', 'Communauté'),
     ]
 
     name = models.CharField(max_length=200, verbose_name="Nom")

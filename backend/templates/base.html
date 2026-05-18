@@ -41,17 +41,10 @@
     {% if user.is_authenticated %}
     <nav class="col-md-2 sidebar pt-3">
       <ul class="nav flex-column">
-        <li class="nav-item">
-          <a class="nav-link {% block nav_courses %}{% endblock %}" href="{% url 'courses:member_courses' %}"><i class="bi bi-book me-1"></i>Mes cours</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {% block nav_history %}{% endblock %}" href="{% url 'participations:my_history' %}"><i class="bi bi-clock-history me-1"></i>Mon historique</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {% block nav_groups %}{% endblock %}" href="{% url 'groups:my_groups' %}"><i class="bi bi-people me-1"></i>Mes groupes</a>
-        </li>
         {% if user.person.is_admin %}
-        <li class="nav-item mt-2 text-muted small px-3">ADMIN</li>
+        <li class="nav-item px-3 py-1">
+          <span class="text-uppercase text-muted fw-bold" style="font-size:.7rem;letter-spacing:.08em;">Admin</span>
+        </li>
         <li class="nav-item">
           <a class="nav-link {% block nav_admin %}{% endblock %}" href="{% url 'courses:admin_dashboard' %}"><i class="bi bi-gear me-1"></i>Tableau de bord</a>
         </li>
@@ -61,7 +54,19 @@
         <li class="nav-item">
           <a class="nav-link {% block nav_groups_admin %}{% endblock %}" href="{% url 'groups:group_list' %}"><i class="bi bi-diagram-3 me-1"></i>Groupes</a>
         </li>
+        <li class="nav-item px-3 pt-3 pb-1">
+          <span class="text-uppercase text-muted fw-bold" style="font-size:.7rem;letter-spacing:.08em;">Personnel</span>
+        </li>
         {% endif %}
+        <li class="nav-item">
+          <a class="nav-link {% block nav_courses %}{% endblock %}" href="{% url 'courses:member_courses' %}"><i class="bi bi-book me-1"></i>Mes cours</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% block nav_history %}{% endblock %}" href="{% url 'participations:my_history' %}"><i class="bi bi-clock-history me-1"></i>Mon historique</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% block nav_groups %}{% endblock %}" href="{% url 'groups:my_groups' %}"><i class="bi bi-people me-1"></i>Mes groupes</a>
+        </li>
       </ul>
     </nav>
     {% endif %}
