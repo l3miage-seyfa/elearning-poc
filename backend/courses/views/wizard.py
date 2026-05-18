@@ -106,10 +106,8 @@ def course_create_wizard(request, pk):
             questions_data = generate_questions(pdf_text, nb_questions, nb_sources=nb_sources)
 
             with transaction.atomic():
-                # Créer les GroupFile uniquement si la génération a réussi
-                for fname, raw, uploaded in pending_new_files:
-                    gf = GroupFile(group=group, name=fname, uploaded_by=person)
-                    gf.file.save(uploaded.name, ContentFile(raw), save=True)
+                # IDs des fichiers sources (existants cochés)
+                source_file_ids = [int(fid) for fid in existing_ids[:3]]
 
                 course = Course.objects.create(
                     title=title, group=group, created_by=person,
@@ -130,6 +128,15 @@ def course_create_wizard(request, pk):
                     )
                     for i, q in enumerate(questions_data)
                 ])
+
+                # Créer les nouveaux GroupFile et collecter leurs IDs
+                for fname, raw, uploaded in pending_new_files:
+                    gf = GroupFile(group=group, name=fname, uploaded_by=person)
+                    gf.file.save(uploaded.name, ContentFile(raw), save=True)
+                    source_file_ids.append(gf.pk)
+
+                # Lier les fichiers sources au cours
+                course.source_files.set(source_file_ids)
 
             messages.success(
                 request,

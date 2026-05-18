@@ -84,6 +84,7 @@ def group_file_view(request, pk, file_pk):
     try:
         response = FileResponse(gf.file.open('rb'), content_type='application/pdf')
         response['Content-Disposition'] = f'inline; filename="{gf.name}.pdf"'
+        response['X-Frame-Options'] = 'SAMEORIGIN'
         return response
     except FileNotFoundError:
         raise Http404
@@ -100,7 +101,16 @@ def group_file_delete(request, pk, file_pk):
     gf = get_object_or_404(GroupFile, pk=file_pk, group=group)
     if request.method == 'POST':
         name = gf.name
+        linked_courses = list(gf.courses.values_list('title', flat=True))
         gf.file.delete(save=False)
         gf.delete()
-        messages.success(request, f"Fichier « {name} » supprimé.")
+        if linked_courses:
+            course_list = ', '.join(f'« {t} »' for t in linked_courses)
+            messages.warning(
+                request,
+                f"Fichier « {name} » supprimé. ⚠️ Il était utilisé par {len(linked_courses)} cours "
+                f"({course_list}) — ces cours n'afficheront plus ce fichier."
+            )
+        else:
+            messages.success(request, f"Fichier « {name} » supprimé.")
     return redirect('courses:responsible_group', pk=pk)

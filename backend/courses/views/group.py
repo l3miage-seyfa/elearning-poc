@@ -33,7 +33,7 @@ def responsible_group_detail(request, pk):
             course=course
         ).select_related('person__user').order_by('-completed_at')
 
-    group_files = group.files.select_related('uploaded_by__user').order_by('-uploaded_at')
+    group_files = group.files.select_related('uploaded_by__user').prefetch_related('courses').order_by('-uploaded_at')
 
     return render(request, 'courses/group/responsible_group.html', {
         'group':                  group,

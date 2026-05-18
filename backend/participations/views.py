@@ -117,6 +117,7 @@ def slide_reader(request, course_pk):
         index = 0
     index = max(0, min(index, len(slides) - 1))
     slide = slides[index] if slides else None
+    group_files = list(course.source_files.order_by('name'))
     return render(request, 'participations/slide_reader.html', {
         'course': course,
         'slides': slides,
@@ -129,5 +130,6 @@ def slide_reader(request, course_pk):
         'prev_index_1': index,
         'is_preview': is_preview,
         'back_mode': back_mode,
+        'group_files': group_files,
     })
 

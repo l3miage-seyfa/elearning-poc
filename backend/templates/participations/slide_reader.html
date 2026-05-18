@@ -140,6 +140,50 @@
   {% endif %}
 </div>
 
+{% if group_files %}
+<!-- ── Séparateur ressources ──────────────────────────────────────── -->
+<hr class="my-4" style="border-color:#dee2e6;">
+<div class="card border-0 bg-light">
+  <div class="card-header bg-light border-bottom d-flex align-items-center gap-2 py-2">
+    <i class="bi bi-folder2-open text-secondary"></i>
+    <span class="fw-semibold text-secondary">Ressources</span>
+    <span class="badge bg-secondary ms-1">{{ group_files|length }}</span>
+  </div>
+  <ul class="list-group list-group-flush">
+    {% for gf in group_files %}
+    <li class="list-group-item bg-light d-flex align-items-center justify-content-between py-2">
+      <span class="text-truncate me-3" style="max-width:60%;"><i class="bi bi-file-earmark-pdf text-danger me-2"></i>{{ gf.name }}</span>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary"
+                onclick="openPdfPreview('{% url 'courses:group_file_view' pk=course.group.pk file_pk=gf.pk %}', '{{ gf.name|escapejs }}')"
+                title="Aperçu">
+          <i class="bi bi-eye"></i>
+        </button>
+        <a href="{% url 'courses:group_file_download' pk=course.group.pk file_pk=gf.pk %}"
+           class="btn btn-sm btn-outline-primary" title="Télécharger">
+          <i class="bi bi-download"></i>
+        </a>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<!-- ── Modal PDF Viewer ───────────────────────────────────────────── -->
+<div id="pdfModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:9999; flex-direction:column;">
+  <div style="background:#fff; margin:2vh auto; width:96%; max-width:900px; height:96vh; border-radius:.5rem; display:flex; flex-direction:column; overflow:hidden;">
+    <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+      <span id="pdfModalTitle" class="fw-semibold text-truncate me-3"></span>
+      <div class="d-flex gap-2">
+        <a id="pdfModalDownload" href="#" class="btn btn-sm btn-outline-primary"><i class="bi bi-download me-1"></i>Télécharger</a>
+        <button class="btn btn-sm btn-outline-danger" onclick="closePdfPreview()"><i class="bi bi-x-lg"></i></button>
+      </div>
+    </div>
+    <iframe id="pdfModalFrame" src="" style="flex:1; border:none; width:100%;"></iframe>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -153,5 +197,25 @@
   marked.setOptions({ breaks: true, gfm: true });
   el.innerHTML = marked.parse(raw);
 })();
+
+function openPdfPreview(url, name) {
+  document.getElementById('pdfModalTitle').textContent = name;
+  document.getElementById('pdfModalFrame').src = url;
+  document.getElementById('pdfModalDownload').href = url.replace('/voir/', '/telecharger/');
+  const modal = document.getElementById('pdfModal');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closePdfPreview() {
+  const modal = document.getElementById('pdfModal');
+  modal.style.display = 'none';
+  document.getElementById('pdfModalFrame').src = '';
+  document.body.style.overflow = '';
+}
+
+document.getElementById('pdfModal').addEventListener('click', function(e) {
+  if (e.target === this) closePdfPreview();
+});
 </script>
 {% endblock %}

@@ -244,10 +244,12 @@
               </button>
               <form method="post" action="{% url 'courses:group_file_delete' pk=group.pk file_pk=gf.pk %}" style="display:inline;">
                 {% csrf_token %}
+                {% with linked=gf.courses.all %}
                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer"
-                        onclick="return confirm('Supprimer le fichier {{ gf.name }} ? Cette action est irréversible.')">
+                        onclick="return confirmDeleteFile('{{ gf.name|escapejs }}', [{% for c in linked %}'{{ c.title|escapejs }}'{% if not forloop.last %},{% endif %}{% endfor %}])">
                   <i class="bi bi-trash3"></i>
                 </button>
+                {% endwith %}
               </form>
             </div>
           </td>
@@ -363,6 +365,17 @@
 }
 </style>
 <script>
+// ── Confirmation suppression fichier ────────────────────────────────────────
+function confirmDeleteFile(name, courses) {
+  if (courses.length === 0) {
+    return confirm(`Supprimer le fichier « ${name} » ?\nCette action est irréversible.`);
+  }
+  const list = courses.map(c => `  • ${c}`).join('\n');
+  return confirm(
+    `⚠️ Attention !\n\nLe fichier « ${name} » est utilisé comme ressource dans ${courses.length} cours :\n${list}\n\nEn le supprimant, il ne sera plus disponible pour ces cours.\n\nConfirmer la suppression ?`
+  );
+}
+
 // ── Upload fichier : ouvre le navigateur natif ──────────────────────────────
 (function () {
   const triggerBtn     = document.getElementById('triggerFileInput');

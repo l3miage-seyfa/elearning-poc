@@ -4,8 +4,9 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.utils import timezone
 from django.contrib.auth.models import User
+from django.core.files.base import ContentFile
 from accounts.models import Person
-from groups.models import Group
+from groups.models import Group, GroupFile
 from courses.models import Course, Slide, Question
 from participations.models import Participation
 
@@ -249,3 +250,97 @@ class ResultRedirectTest(TestCase):
             reverse('participations:result_detail', kwargs={'pk': self.participation.pk}),
             fetch_redirect_response=False
         )
+
+
+def _make_group_file(group, person, name='doc.pdf'):
+    """Crée un GroupFile avec un contenu PDF minimal."""
+    gf = GroupFile(group=group, name=name, uploaded_by=person)
+    gf.file.save(f'{name}', ContentFile(b'%PDF-1.4 fake'), save=True)
+    return gf
+
+
+class SlideReaderSourceFilesTest(TestCase):
+    """Vérifie que slide_reader expose uniquement les source_files du cours."""
+
+    def setUp(self):
+        self.client = Client()
+        self.responsible = make_person('resp_sf@poc.com')
+        self.student = make_person('student_sf@poc.com')
+        self.admin = make_person('admin_sf@poc.com', is_admin=True)
+        self.group = Group.objects.create(name='G-SF', type='equipe', responsible=self.responsible)
+        # Deux fichiers dans le groupe
+        self.gf1 = _make_group_file(self.group, self.responsible, 'source1.pdf')
+        self.gf2 = _make_group_file(self.group, self.responsible, 'source2.pdf')
+        self.gf_other = _make_group_file(self.group, self.responsible, 'autre.pdf')
+        # Cours lié seulement à gf1 + gf2
+        self.course = Course.objects.create(
+            title='Cours SF', group=self.group, created_by=self.responsible,
+            nb_slides=1, nb_questions=1, is_published=True
+        )
+        self.course.source_files.set([self.gf1, self.gf2])
+        Slide.objects.create(course=self.course, order=1, content='# SF\nContenu')
+        # Ajouter étudiant au groupe
+        from groups.models import GroupMembership
+        GroupMembership.objects.get_or_create(person=self.student, group=self.group)
+
+    def tearDown(self):
+        for gf in [self.gf1, self.gf2, self.gf_other]:
+            try:
+                gf.file.delete(save=False)
+            except Exception:
+                pass
+
+    def _get_reader(self, person, preview=False):
+        self.client.force_login(person.user)
+        url = reverse('participations:slide_reader', kwargs={'course_pk': self.course.pk})
+        params = {'preview': '1'} if preview else {}
+        return self.client.get(url, params)
+
+    def test_student_voit_seulement_source_files(self):
+        r = self._get_reader(self.student)
+        self.assertEqual(r.status_code, 200)
+        group_files = list(r.context['group_files'])
+        pks = {gf.pk for gf in group_files}
+        self.assertIn(self.gf1.pk, pks)
+        self.assertIn(self.gf2.pk, pks)
+        self.assertNotIn(self.gf_other.pk, pks)
+
+    def test_responsable_preview_voit_seulement_source_files(self):
+        r = self._get_reader(self.responsible, preview=True)
+        self.assertEqual(r.status_code, 200)
+        group_files = list(r.context['group_files'])
+        pks = {gf.pk for gf in group_files}
+        self.assertIn(self.gf1.pk, pks)
+        self.assertNotIn(self.gf_other.pk, pks)
+
+    def test_admin_preview_voit_seulement_source_files(self):
+        r = self._get_reader(self.admin, preview=True)
+        self.assertEqual(r.status_code, 200)
+        group_files = list(r.context['group_files'])
+        pks = {gf.pk for gf in group_files}
+        self.assertIn(self.gf1.pk, pks)
+        self.assertNotIn(self.gf_other.pk, pks)
+
+    def test_cours_sans_source_files_retourne_liste_vide(self):
+        self.course.source_files.clear()
+        r = self._get_reader(self.student)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(list(r.context['group_files']), [])
+
+    def test_deux_cours_sources_differentes(self):
+        """Un second cours avec uniquement gf_other ne doit pas voir gf1/gf2."""
+        course2 = Course.objects.create(
+            title='Cours SF2', group=self.group, created_by=self.responsible,
+            nb_slides=1, nb_questions=1, is_published=True
+        )
+        course2.source_files.set([self.gf_other])
+        Slide.objects.create(course=course2, order=1, content='# SF2\nContenu')
+
+        self.client.force_login(self.student.user)
+        url = reverse('participations:slide_reader', kwargs={'course_pk': course2.pk})
+        r = self.client.get(url)
+        self.assertEqual(r.status_code, 200)
+        pks = {gf.pk for gf in r.context['group_files']}
+        self.assertIn(self.gf_other.pk, pks)
+        self.assertNotIn(self.gf1.pk, pks)
+        self.assertNotIn(self.gf2.pk, pks)

@@ -17,6 +17,12 @@ class Course(models.Model):
     nb_questions = models.PositiveIntegerField(default=5, verbose_name="Nombre de questions souhaité")
     is_published = models.BooleanField(default=False, verbose_name="Publié")
     created_at = models.DateTimeField(auto_now_add=True)
+    source_files = models.ManyToManyField(
+        'groups.GroupFile',
+        blank=True,
+        related_name='courses',
+        verbose_name="Fichiers sources",
+    )
 
     def __str__(self):
         status = "✅" if self.is_published else "⏳"
