@@ -25,9 +25,10 @@
         <div class="col-md-6">
           <label class="form-label fw-semibold">Type</label>
           <select name="type" class="form-select">
-            <option value="direction" {% if values.type == 'direction' %}selected{% endif %}>Direction</option>
-            <option value="equipe"    {% if values.type == 'equipe' or not values.type %}selected{% endif %}>Équipe</option>
-            <option value="projet"    {% if values.type == 'projet' %}selected{% endif %}>Projet</option>
+            <option value="direction"  {% if values.type == 'direction' %}selected{% endif %}>Direction</option>
+            <option value="equipe"     {% if values.type == 'equipe' or not values.type %}selected{% endif %}>Équipe</option>
+            <option value="projet"     {% if values.type == 'projet' %}selected{% endif %}>Projet</option>
+            <option value="communaute" {% if values.type == 'communaute' %}selected{% endif %}>Communauté</option>
           </select>
         </div>
         <div class="col-md-6">
