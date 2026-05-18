@@ -142,3 +142,31 @@ Texte source :
     data      = json.loads(response.choices[0].message.content)
     questions = data.get("questions", data) if isinstance(data, dict) else data
     return questions[:nb_questions]
+
+
+def answer_question(pdf_text: str, question: str) -> str:
+    """
+    Répond à une question en se basant uniquement sur le texte extrait des PDFs du cours.
+    Retourne une chaîne de texte (réponse en langage naturel).
+    """
+    if not client:
+        raise RuntimeError("OpenAI client non initialisé (OPENAI_API_KEY manquant ?)")
+
+    prompt = f"""Tu es un assistant pédagogique. Réponds à la question de l'apprenant
+ en te basant UNIQUEMENT sur le contenu fourni ci-dessous.
+Si la réponse n'est pas dans le contenu, dis-le clairement.
+Réponds en français, de façon concise et pédagogique (3 à 6 phrases maximum).
+
+Contenu du cours :
+---
+{pdf_text}
+---
+
+Question : {question}"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.3,
+    )
+    return response.choices[0].message.content.strip()

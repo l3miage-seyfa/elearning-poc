@@ -141,8 +141,34 @@
 </div>
 
 {% if group_files %}
-<!-- ── Séparateur ressources ──────────────────────────────────────── -->
+<!-- ── Séparateur Q&A ─────────────────────────────────────────────── -->
 <hr class="my-4" style="border-color:#dee2e6;">
+<div class="card border-0 bg-light">
+  <div class="card-header bg-light border-bottom d-flex align-items-center gap-2 py-2">
+    <i class="bi bi-chat-dots text-secondary"></i>
+    <span class="fw-semibold text-secondary">Questions</span>
+  </div>
+  <div class="card-body">
+    <div class="d-flex gap-2">
+      <input type="text" id="qaInput" class="form-control"
+             placeholder="Posez une question"
+             maxlength="500" autocomplete="off">
+      <button id="qaBtn" class="btn btn-secondary text-nowrap" onclick="submitQuestion()" disabled>
+        <i class="bi bi-send me-1"></i>Valider
+      </button>
+    </div>
+    <div id="qaAnswer" class="mt-3" style="display:none;">
+      <div class="p-3 rounded border bg-white small" id="qaAnswerText" style="white-space:pre-wrap; line-height:1.6;"></div>
+    </div>
+    <div id="qaError" class="mt-2 text-danger small" style="display:none;"></div>
+    <div id="qaLoading" class="mt-2 text-secondary small" style="display:none;">
+      <span class="spinner-border spinner-border-sm me-1"></span>Recherche en cours…
+    </div>
+  </div>
+</div>
+
+<!-- ── Séparateur ressources ──────────────────────────────────────── -->
+<hr class="my-2" style="border-color:#dee2e6;">
 <div class="card border-0 bg-light">
   <div class="card-header bg-light border-bottom d-flex align-items-center gap-2 py-2">
     <i class="bi bi-folder2-open text-secondary"></i>
@@ -168,6 +194,7 @@
     {% endfor %}
   </ul>
 </div>
+<div class="pb-5"></div>
 {% endif %}
 
 <!-- ── Modal PDF Viewer ───────────────────────────────────────────── -->
@@ -216,6 +243,66 @@ function closePdfPreview() {
 
 document.getElementById('pdfModal').addEventListener('click', function(e) {
   if (e.target === this) closePdfPreview();
+});
+
+// ── Q&A ───────────────────────────────────────────────────────────
+function submitQuestion() {
+  const input   = document.getElementById('qaInput');
+  const btn     = document.getElementById('qaBtn');
+  const loading = document.getElementById('qaLoading');
+  const answer  = document.getElementById('qaAnswer');
+  const ansText = document.getElementById('qaAnswerText');
+  const errBox  = document.getElementById('qaError');
+  const question = input.value.trim();
+  if (!question) { input.focus(); return; }
+
+  btn.disabled = true;
+  loading.style.display = 'block';
+  answer.style.display  = 'none';
+  errBox.style.display  = 'none';
+
+  const url = "{% url 'participations:ask_question' course.pk %}{% if is_preview %}?preview=1{% endif %}";
+  const csrfToken = document.cookie.split(';').map(c => c.trim())
+    .find(c => c.startsWith('csrftoken='))?.split('=')[1] || '';
+
+  fetch(url, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `question=${encodeURIComponent(question)}`
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.answer) {
+      ansText.textContent = data.answer;
+      answer.style.display = 'block';
+    } else {
+      errBox.textContent = data.error || 'Erreur inconnue.';
+      errBox.style.display = 'block';
+    }
+  })
+  .catch(() => {
+    errBox.textContent = 'Erreur réseau, veuillez réessayer.';
+    errBox.style.display = 'block';
+  })
+  .finally(() => {
+    btn.disabled = false;
+    loading.style.display = 'none';
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('qaInput');
+  const btn   = document.getElementById('qaBtn');
+  if (!input || !btn) return;
+
+  input.addEventListener('input', () => {
+    const hasText = input.value.trim().length > 0;
+    btn.disabled = !hasText;
+    btn.classList.toggle('btn-secondary', !hasText);
+    btn.classList.toggle('btn-primary', hasText);
+  });
+
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') submitQuestion(); });
 });
 </script>
 {% endblock %}

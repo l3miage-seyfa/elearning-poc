@@ -9,4 +9,5 @@ urlpatterns = [
     path('resultat/<int:pk>/detail/', views.result_detail, name='result_detail'),
     path('historique/', views.my_history, name='my_history'),
     path('slides/<int:course_pk>/', views.slide_reader, name='slide_reader'),
+    path('slides/<int:course_pk>/question/', views.ask_question, name='ask_question'),
 ]

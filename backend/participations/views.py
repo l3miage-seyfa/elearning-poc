@@ -1,6 +1,8 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 from services.decorators import login_and_person_required
 from courses.models import Course, Question, Slide
 from .models import Participation
@@ -92,6 +94,52 @@ def my_history(request):
         p.attempt_number = p.attempt
 
     return render(request, 'participations/my_history.html', {'participations': participations})
+
+
+@login_and_person_required
+@require_POST
+def ask_question(request, course_pk):
+    """Répond à une question AJAX basée sur les source_files du cours."""
+    from services.ai_service import extract_pdf_text, answer_question as ai_answer
+    import openai
+
+    is_preview = request.GET.get('preview') == '1'
+    if is_preview:
+        course = get_object_or_404(Course, pk=course_pk)
+        person = request.user.person
+        if not (person.is_admin or course.created_by == person
+                or (hasattr(course.group, 'responsible') and course.group.responsible == person)):
+            return JsonResponse({'error': 'Accès refusé.'}, status=403)
+    else:
+        course = get_object_or_404(Course, pk=course_pk, is_published=True)
+
+    question = request.POST.get('question', '').strip()
+    if not question:
+        return JsonResponse({'error': 'Veuillez saisir une question.'}, status=400)
+
+    source_files = list(course.source_files.all())
+    if not source_files:
+        return JsonResponse({'error': 'Ce cours ne possède pas de ressources PDF associées.'}, status=400)
+
+    all_pdf_bytes = []
+    for gf in source_files:
+        try:
+            with gf.file.open('rb') as f:
+                all_pdf_bytes.append(f.read())
+        except (FileNotFoundError, OSError):
+            pass
+
+    if not all_pdf_bytes:
+        return JsonResponse({'error': 'Les fichiers PDF ne sont plus disponibles.'}, status=400)
+
+    try:
+        pdf_text = extract_pdf_text(all_pdf_bytes)
+        answer = ai_answer(pdf_text, question)
+        return JsonResponse({'answer': answer})
+    except openai.RateLimitError:
+        return JsonResponse({'error': 'Quota OpenAI dépassé. Réessayez dans quelques instants.'}, status=429)
+    except Exception as e:
+        return JsonResponse({'error': f'Erreur : {e}'}, status=500)
 
 
 @login_and_person_required
